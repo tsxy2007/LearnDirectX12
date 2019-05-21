@@ -209,100 +209,89 @@ void D3D12HelloTriangle::LoadAssets()
 
 		TexMetadata MetaData;
 		GetMetadataFromDDSFile(L"test.DDS", DDS_FLAGS_NONE, MetaData);
-		ID3D12Heap* pUploadHeap;
+
+
+		D3D12_RESOURCE_DESC bufferdc;
 		{
-			D3D12_HEAP_DESC heapdesc;
-			heapdesc.SizeInBytes =  D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 16;
-			heapdesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
-			heapdesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			heapdesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			heapdesc.Properties.CreationNodeMask = 0x1;
-			heapdesc.Properties.VisibleNodeMask = 0x1;
-			heapdesc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-			heapdesc.Flags = D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES | D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES;
-			m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap));
-		}
-		// 创建缓冲
-		ID3D12Resource* pUploadBuffer;
-		{
-			D3D12_RESOURCE_DESC bufferdc;
 			bufferdc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 			bufferdc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
 			bufferdc.Width = MetaData.width;// GRS_UPPER(size, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);//D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 16;
 			bufferdc.Height = MetaData.height;
 			bufferdc.DepthOrArraySize = MetaData.arraySize;
-			bufferdc.MipLevels = MetaData.mipLevels;
+			bufferdc.MipLevels = 1;
 			bufferdc.Format = MetaData.format; //DXGI_FORMAT_R32G32B32A32_UINT;
 			bufferdc.SampleDesc.Count = 1;
 			bufferdc.SampleDesc.Quality = 0;
-			bufferdc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			bufferdc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			bufferdc.Flags = D3D12_RESOURCE_FLAG_NONE;
-			ThrowIfFailed(  m_device->CreatePlacedResource(pUploadHeap, 0, &bufferdc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, IID_PPV_ARGS(&pUploadBuffer)));
-			int i = 0;
 		}
-
-		volatile UINT8* pUploadBufferData;
+		
+		D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
+		if (info.Alignment != D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT)
 		{
-			void* p;
-			D3D12_RANGE range = { 0,0 };
-			pUploadBuffer->Map(0, &range, &p);
-			pUploadBufferData = static_cast<UINT8*>(p);
+			bufferdc.Alignment = 0;
+			info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
+		}
+		// 创建缓冲
+		/*ID3D12Resource* pUploadBuffer;
+		{
+			ThrowIfFailed(m_device->CreatePlacedResource(pUploadHeap, 0, &bufferdc, D3D12_RESOURCE_STATE_GENERIC_READ, NULL, IID_PPV_ARGS(&pUploadBuffer)));
+		}*/
+
+
+		ID3D12Heap* pUploadHeap;
+		{
+			D3D12_HEAP_DESC heapdesc;
+			heapdesc.SizeInBytes = info.SizeInBytes;// D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 16;
+			heapdesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
+			heapdesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			heapdesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			heapdesc.Properties.CreationNodeMask = 1;
+			heapdesc.Properties.VisibleNodeMask = 1;
+			heapdesc.Alignment = 0;// D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+			heapdesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+			m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap));
 		}
 		
 		{
-			HANDLE hDDSFile = CreateFileW(L"E:\Projects\LearnDirectX12\LearnDirectX\test.DDS", GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-			LARGE_INTEGER szDDSFile;
-			GetFileSizeEx(hDDSFile, &szDDSFile);
-			HANDLE hDDSSection = CreateFileMappingW(hDDSFile, NULL, PAGE_READONLY, 0, szDDSFile.LowPart, NULL);
-			void* pDDSFile = MapViewOfFile(hDDSSection, FILE_MAP_READ, 0, 0, szDDSFile.LowPart);
+			// 创建上传堆
+			ID3D12Heap* UploadHeap;
+			D3D12_HEAP_DESC UpLoadHeapDesc = {};
+			UpLoadHeapDesc.SizeInBytes = info.SizeInBytes;
+			UpLoadHeapDesc.Alignment = 0;
+			UpLoadHeapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
+			UpLoadHeapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			UpLoadHeapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			UpLoadHeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 
 
-			
-			UINT8* pDDSFileData;
-			pDDSFileData = static_cast<UINT8*>(pDDSFile) + 4 + 124 + 20;
-			D3D12_RESOURCE_DESC rcdc;
-			{
-				rcdc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-				rcdc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-				rcdc.Width = nWidth;
-				rcdc.Height = nHeight;
-				rcdc.DepthOrArraySize = 1;
-				rcdc.MipLevels = MipLevel;
-				rcdc.Format = DXGI_FORMAT_R32G32B32_UINT;
-				rcdc.SampleDesc.Count = 1;
-				rcdc.SampleDesc.Quality = 0;
-				rcdc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-				rcdc.Flags = D3D12_RESOURCE_FLAG_NONE;
+			D3D12_RESOURCE_DESC Uploadbufferdc;
+			Uploadbufferdc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			Uploadbufferdc.Alignment = info.Alignment;
+			Uploadbufferdc.Width = MetaData.width;
+			Uploadbufferdc.Height = MetaData.height;
+			Uploadbufferdc.DepthOrArraySize = MetaData.arraySize;
+			Uploadbufferdc.MipLevels = 1;
+			Uploadbufferdc.Format = MetaData.format;
+			Uploadbufferdc.SampleDesc.Count = 1;
+			Uploadbufferdc.SampleDesc.Quality = 0;
+			Uploadbufferdc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			Uploadbufferdc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-			}
+			ThrowIfFailed(m_device->CreateHeap(&UpLoadHeapDesc, IID_PPV_ARGS(&UploadHeap)));
+			ThrowIfFailed(m_device->CreatePlacedResource(
+				UploadHeap,
+				0,
+				&CD3DX12_RESOURCE_DESC::Buffer(info),
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(&m_ITextureUpload)
+			));
 
-			UINT64 texoffset = 0;
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT Layouts[MipLevel];
-			{
-				UINT NumRows[MipLevel];
-				UINT64 RowSizeInByte[MipLevel];
-				m_device->GetCopyableFootprints(&rcdc, 0, MipLevel, texoffset, Layouts, NumRows, RowSizeInByte, NULL);
-				volatile UINT8* pTexBufferData;
-				for (int i = 0; i < MipLevel; i++)
-				{
-					pTexBufferData = pUploadBufferData + Layouts[i].Offset;
-					for (UINT irow = 0; irow < NumRows[i]; irow++)
-					{
-						for (UINT ib = 0; ib < RowSizeInByte[i]; ib++)
-						{
-							pTexBufferData[ib] = pDDSFileData[ib];
-						}
-						pTexBufferData += Layouts[i].Footprint.RowPitch;
-						pDDSFileData += RowSizeInByte[i];
-					}
-				}
-			}
-
-
-			UnmapViewOfFile(pDDSFile);
-			CloseHandle(hDDSSection);
-			CloseHandle(hDDSFile);
+			INT32 i = 0;
 		}
+		
+		
 		
 		
 
