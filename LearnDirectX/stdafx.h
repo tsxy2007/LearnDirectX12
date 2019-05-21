@@ -13,5 +13,11 @@
 #include <shellapi.h>
 #include "d3d12.h"
 #include <stdexcept>
+#include "DirectXTex.h"
 
+//更简洁的向上边界对齐算法 内存管理中常用 请记住
 #define GRS_UPPER(A,B) ((UINT)(((A)+((B)-1))&~(B - 1)))
+
+
+//新定义的宏用于上取整除法
+#define GRS_UPPER_DIV(A,B) ((UINT)(((A)+((B)-1))/(B)))
