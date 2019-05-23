@@ -6,16 +6,9 @@ struct PSInput
 };
 
 Texture2D g_texture : register(t0);
+SamplerState g_sampler : register(s0);
 
-SamplerState s_2D = sampler_state  // 声明一个采样器对象 
-{
-	Texture = <tex0>;         // 指定被采样的纹理 
-	MinFilter = Linear;       // 纹理过滤方式 
-	MagFilter = Linear;
-	AddressU = Wrap;          // 纹理寻址模式 
-	AddressV = Wrap;
-};
-PSInput VSMain(float4 position : POSITION, float2 uv : TEXCOORD)
+PSInput VSMain(float4 position : POSITION, float4 uv : TEXCOORD)
 {
 	PSInput result;
 
@@ -27,5 +20,5 @@ PSInput VSMain(float4 position : POSITION, float2 uv : TEXCOORD)
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-	return g_texture.Sample(s_2D,input.uv);
+	return g_texture.Sample(g_sampler, input.uv);
 }
