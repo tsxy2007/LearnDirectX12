@@ -26,7 +26,7 @@ private:
 	struct Vertex
 	{
 		XMFLOAT3 position;
-		XMFLOAT4 color;
+		XMFLOAT2 uv;
 	};
 
 	CD3DX12_VIEWPORT m_viewport;

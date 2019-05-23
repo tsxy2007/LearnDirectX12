@@ -27,6 +27,7 @@ inline void ThrowIfFailed(HRESULT hr)
 {
 	if (FAILED(hr))
 	{
+		std::cout<< HrToString(hr)<<std::endl;
 		throw HrException(hr);
 	}
 }
