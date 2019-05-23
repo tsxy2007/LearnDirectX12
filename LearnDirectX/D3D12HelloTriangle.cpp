@@ -321,6 +321,7 @@ void D3D12HelloTriangle::LoadAssets()
 
 
 
+
 			ID3D12Heap* pUploadHeap;
 			D3D12_HEAP_DESC heapdesc;
 			{
@@ -341,17 +342,23 @@ void D3D12HelloTriangle::LoadAssets()
 			}
 
 
-			UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
-			UINT   nTextureRowNum = 0u;
-			UINT64 n64TextureRowSizes = 0u;
-			UINT64 n64RequiredSize = 0u;
+			//UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
+			//UINT   nTextureRowNum = 0u;
+			//UINT64 n64TextureRowSizes = 0u;
+			//UINT64 n64RequiredSize = 0u;
 
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootPrint;
-			m_device->GetCopyableFootprints(&bufferdc, 0, 1, 0, &FootPrint, &nTextureRowNum, &n64TextureRowSizes, &n64RequiredSize);;
+			//D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootPrint;
+			//m_device->GetCopyableFootprints(&bufferdc, 0, 1, 0, &FootPrint, &nTextureRowNum, &n64TextureRowSizes, &n64RequiredSize);;
 
-			CD3DX12_TEXTURE_COPY_LOCATION Dst(pTextureResource, 0);
-			CD3DX12_TEXTURE_COPY_LOCATION Src(m_ITextureUpload.Get(), FootPrint);
-			m_commandList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
+			//CD3DX12_TEXTURE_COPY_LOCATION Dst(pTextureResource, 0);
+			//CD3DX12_TEXTURE_COPY_LOCATION Src(m_ITextureUpload.Get(), FootPrint);
+			//m_commandList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
+			D3D12_SUBRESOURCE_DATA textureData = {};
+			textureData.pData = Image.GetPixels();
+			textureData.RowPitch = Image.GetImages()->rowPitch; //TextureWidth * TexturePixelSize;
+			textureData.SlicePitch = Image.GetImages()->slicePitch;
+
+			UpdateSubresources(m_commandList.Get(), pTextureResource, m_ITextureUpload.Get(), 0, 0, 1, &textureData);
 
 			//设置一个资源屏障，同步并确认复制操作完成
 			//直接使用结构体然后调用的形式
@@ -363,7 +370,9 @@ void D3D12HelloTriangle::LoadAssets()
 			stResBar.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 			stResBar.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-			m_commandList->ResourceBarrier(1, &stResBar);
+			//m_commandList->ResourceBarrier(1, &stResBar);
+			m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTextureResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+
 
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
