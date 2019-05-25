@@ -108,10 +108,6 @@ void D3D12HelloTriangle::LoadPipeline()
 		rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
 		m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-		D3D12_HEAP_DESC HeapDesc = {};
-		HeapDesc.Alignment = D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT;
-		ID3D12Heap* Heap;
-		m_device->CreateHeap(&HeapDesc,IID_PPV_ARGS(&Heap));
 
 		D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 		srvHeapDesc.NumDescriptors = 1;
@@ -157,7 +153,7 @@ void D3D12HelloTriangle::LoadAssets()
 	sampler.MipLODBias = 0;
 	sampler.MaxAnisotropy = 0;
 	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
 	sampler.MinLOD = 0.f;
 	sampler.MaxLOD = D3D12_FLOAT32_MAX;
 	sampler.ShaderRegister = 0;
@@ -224,11 +220,12 @@ void D3D12HelloTriangle::LoadAssets()
 	
 	//创建Vertex Buffer
 	{
-		Vertex triangleVertices[] = 
+		Vertex triangleVertices[] =
 		{
-	 { { 0.0f, 0.25f * m_aspectRatio, 0.0f }, { 0.5f, 0.0f } },
+			{ { 0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.f, 0.f } },
 			{ { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f } },
-			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f } }
+			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f } },
+			{ { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f } },
 		};
 
 		const UINT vertexBufferSize = sizeof(triangleVertices);
@@ -238,6 +235,7 @@ void D3D12HelloTriangle::LoadAssets()
 			&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
+
 			IID_PPV_ARGS(&m_vertexBuffer)
 		);
 
@@ -254,6 +252,32 @@ void D3D12HelloTriangle::LoadAssets()
 		m_vertexBufferView.StrideInBytes = sizeof(Vertex);
 		m_vertexBufferView.SizeInBytes = vertexBufferSize;
 
+		DWORD iList[] =
+		{
+			0,1,2,
+			0,2,3
+		};
+		const UINT IndexBufferSize = sizeof(iList);
+		m_device->CreateCommittedResource
+		(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(IndexBufferSize),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&m_IndexBuffer)
+		);
+
+		UINT8* pIndexDataBegin;
+		D3D12_RANGE IndexReadRange = { 0, 0 };
+		ThrowIfFailed(m_IndexBuffer->Map(0, &IndexReadRange, reinterpret_cast<void**>(&pIndexDataBegin)));
+		memcpy(pIndexDataBegin, iList, sizeof(iList));
+		m_IndexBuffer->Unmap(0, nullptr);
+
+		// 初始化顶点数据
+		m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
+		m_IndexBufferView.SizeInBytes = sizeof(iList);
+		m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
 		// 创建heap
 
 
@@ -311,17 +335,6 @@ void D3D12HelloTriangle::LoadAssets()
 				nullptr,
 				IID_PPV_ARGS(&m_ITextureUpload)
 			));
-
-			UINT8* pTexturePixel;
-			CD3DX12_RANGE TextureRange(0, 0);
-			ThrowIfFailed(m_ITextureUpload->Map(0, &TextureRange, reinterpret_cast<void**>(&pTexturePixel)));
-			memcpy(pTexturePixel, Image.GetPixels(), Image.GetPixelsSize());
-			m_ITextureUpload->Unmap(0, nullptr);
-
-
-
-
-
 			ID3D12Heap* pUploadHeap;
 			D3D12_HEAP_DESC heapdesc;
 			{
@@ -342,23 +355,24 @@ void D3D12HelloTriangle::LoadAssets()
 			}
 
 
-			//UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
-			//UINT   nTextureRowNum = 0u;
-			//UINT64 n64TextureRowSizes = 0u;
-			//UINT64 n64RequiredSize = 0u;
+			UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
+			UINT   nTextureRowNum = 0u;
+			UINT64 n64TextureRowSizes = 0u;
+			UINT64 n64RequiredSize = 0u;
 
-			//D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootPrint;
-			//m_device->GetCopyableFootprints(&bufferdc, 0, 1, 0, &FootPrint, &nTextureRowNum, &n64TextureRowSizes, &n64RequiredSize);;
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootPrint;
+			m_device->GetCopyableFootprints(&bufferdc, 0, 1, 0, &FootPrint, &nTextureRowNum, &n64TextureRowSizes, &n64RequiredSize);;
 
-			//CD3DX12_TEXTURE_COPY_LOCATION Dst(pTextureResource, 0);
-			//CD3DX12_TEXTURE_COPY_LOCATION Src(m_ITextureUpload.Get(), FootPrint);
-			//m_commandList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
-			D3D12_SUBRESOURCE_DATA textureData = {};
-			textureData.pData = Image.GetPixels();
-			textureData.RowPitch = Image.GetImages()->rowPitch; //TextureWidth * TexturePixelSize;
-			textureData.SlicePitch = Image.GetImages()->slicePitch;
+			UINT8* pTexturePixel;
+			CD3DX12_RANGE TextureRange(0, 0);
+			ThrowIfFailed(m_ITextureUpload->Map(0, &TextureRange, reinterpret_cast<void**>(&pTexturePixel)));
+			memcpy(pTexturePixel, Image.GetPixels(), Image.GetPixelsSize());
+			m_ITextureUpload->Unmap(0, nullptr);
 
-			UpdateSubresources(m_commandList.Get(), pTextureResource, m_ITextureUpload.Get(), 0, 0, 1, &textureData);
+			CD3DX12_TEXTURE_COPY_LOCATION Dst(pTextureResource, 0);
+			CD3DX12_TEXTURE_COPY_LOCATION Src(m_ITextureUpload.Get(), FootPrint);
+			m_commandList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
+			
 
 			//设置一个资源屏障，同步并确认复制操作完成
 			//直接使用结构体然后调用的形式
@@ -370,9 +384,7 @@ void D3D12HelloTriangle::LoadAssets()
 			stResBar.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 			stResBar.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-			//m_commandList->ResourceBarrier(1, &stResBar);
-			m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTextureResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-
+			m_commandList->ResourceBarrier(1, &stResBar);
 
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -437,6 +449,12 @@ void D3D12HelloTriangle::PopulateCommandList()
 
 	//Set necessary state
 	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+
+
+	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
+	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+
+	m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
@@ -451,7 +469,8 @@ void D3D12HelloTriangle::PopulateCommandList()
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	m_commandList->DrawInstanced(3, 1, 0, 0);
+	m_commandList->IASetIndexBuffer(&m_IndexBufferView);
+	m_commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 
 	// Indicate
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
