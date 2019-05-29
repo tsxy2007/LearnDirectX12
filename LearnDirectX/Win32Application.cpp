@@ -53,6 +53,8 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+
+		//Sleep(1 / 60.f);
 	}
 
 	pSample->OnDestroy();

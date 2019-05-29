@@ -41,6 +41,7 @@ private:
 	ComPtr< ID3D12RootSignature> m_rootSignature;
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	ComPtr<ID3D12DescriptorHeap> m_srvHeap;
+	ComPtr<ID3D12DescriptorHeap> m_cbvHeap;
 	ComPtr<ID3D12PipelineState>m_pipelineState;
 	ComPtr<ID3D12GraphicsCommandList2>m_commandList;
 	UINT m_rtvDescriptorSize;
@@ -50,6 +51,9 @@ private:
 
 	ComPtr<ID3D12Resource> m_IndexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView;
+
+	ComPtr<ID3D12Resource> m_CBVBuffer;
+	//D3D12_CONSTANT_BUFFER_VIEW_DESC
 
 	UINT m_frameIndex;
 	HANDLE m_fenceEvent;

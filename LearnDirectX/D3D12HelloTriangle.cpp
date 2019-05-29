@@ -6,6 +6,17 @@
 #define nWidth  256
 #define nHeight  206
 
+static DirectX::XMFLOAT4X4 Identity4x4()
+{
+	static DirectX::XMFLOAT4X4 I(
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f);
+
+	return I;
+};
+
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
 	DXSample(width,height,name),
 	m_frameIndex(0),
@@ -114,6 +125,14 @@ void D3D12HelloTriangle::LoadPipeline()
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
+
+
+		D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
+		cbvHeapDesc.NumDescriptors = 1;
+		cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		cbvHeapDesc.NodeMask = 0;
+		ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
 	}
 
 	//创建RenderTargetView
@@ -276,11 +295,42 @@ void D3D12HelloTriangle::LoadAssets()
 
 		// 初始化顶点数据
 		m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
-		m_IndexBufferView.SizeInBytes = sizeof(iList);
+		m_IndexBufferView.SizeInBytes = IndexBufferSize;
 		m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
-		// 创建heap
+	
+
+		// 创建常量缓存区
+		struct ObjectConstants
+		{
+			XMFLOAT4X4 WorldViewProj;
+		};
+		ObjectConstants OC;
+		OC.WorldViewProj = Identity4x4();
+		const UINT ConstantBufferSize = 256; sizeof(ObjectConstants);
+		m_device->CreateCommittedResource
+		(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(ConstantBufferSize),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&m_CBVBuffer)
+		);
+
+		UINT8* pConstantDataBegin;
+		D3D12_RANGE ConstantReadRange = { 0,0 };
+		ThrowIfFailed(m_CBVBuffer->Map(0, &ConstantReadRange, reinterpret_cast<void**>(&pConstantDataBegin)));
+		memcpy(pConstantDataBegin, &OC, sizeof(ObjectConstants));
+		m_CBVBuffer->Unmap(0, nullptr);
 
 
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+		cbvDesc.BufferLocation = m_CBVBuffer->GetGPUVirtualAddress();
+		cbvDesc.SizeInBytes = ConstantBufferSize;
+		m_device->CreateConstantBufferView(&cbvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
+
+
+		// 加载Texture
 		TexMetadata MetaData;
 		ScratchImage Image;
 		LoadFromDDSFile(L"test.DDS", DDS_FLAGS_NONE, &MetaData,Image);
@@ -302,14 +352,6 @@ void D3D12HelloTriangle::LoadAssets()
 		D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
 		{
 			// 创建上传堆
-			ID3D12Heap* UploadHeap;
-			D3D12_HEAP_DESC UpLoadHeapDesc = {};
-			UpLoadHeapDesc.SizeInBytes = info.SizeInBytes;
-			UpLoadHeapDesc.Alignment = 0;
-			UpLoadHeapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
-			UpLoadHeapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			UpLoadHeapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			UpLoadHeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 
 
 			D3D12_RESOURCE_DESC Uploadbufferdc;
@@ -324,6 +366,17 @@ void D3D12HelloTriangle::LoadAssets()
 			Uploadbufferdc.SampleDesc.Quality = 0;
 			Uploadbufferdc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 			Uploadbufferdc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+
+
+			ID3D12Heap* UploadHeap;
+			D3D12_HEAP_DESC UpLoadHeapDesc = {};
+			UpLoadHeapDesc.SizeInBytes = info.SizeInBytes;
+			UpLoadHeapDesc.Alignment = 0;
+			UpLoadHeapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
+			UpLoadHeapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			UpLoadHeapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			UpLoadHeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
 
 
 			ThrowIfFailed(m_device->CreateHeap(&UpLoadHeapDesc, IID_PPV_ARGS(&UploadHeap)));
@@ -394,7 +447,8 @@ void D3D12HelloTriangle::LoadAssets()
 			m_device->CreateShaderResourceView(pTextureResource, &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
 			
 		}
-		
+	
+
 		ThrowIfFailed(m_commandList->Close());
 		ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
 		m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
