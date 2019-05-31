@@ -141,6 +141,8 @@ void D3D12HelloTriangle::LoadPipeline()
 	
 	//´´½¨ÃüÁî·ÖÅäÆ÷
 	m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator));
+
+	m_device->SetName(L"Device");
 }
 
 void D3D12HelloTriangle::BuildDescriptorHeaps()
@@ -314,17 +316,15 @@ void D3D12HelloTriangle::LoadAssets()
 		};
 		ObjectConstants OC;
 
-		//XMFLOAT4X4 View = Identity4x4();
-		//XMFLOAT4X4 Proj = Identity4x4();
+		FXMVECTOR EyePosition = { 0,0,-5.f };
+		FXMVECTOR FocusPosition = {0,2,0};
+		FXMVECTOR UpDirection = XMVectorSet(0.0f, -1.5f, 0.0f, .0f);
+		XMMATRIX view = XMMatrixLookAtLH(EyePosition, FocusPosition, UpDirection);
 
-		//FXMVECTOR EyePosition = { 0,0,1.f };
-		//FXMVECTOR FocusPosition = XMVectorZero();
-		//FXMVECTOR UpDirection = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
-		//XMMATRIX lightView = XMMatrixLookAtLH(EyePosition, FocusPosition, UpDirection);
+		XMMATRIX proj = XMMatrixPerspectiveFovLH(20.f, 1.f, 1.0f, 1000.0f);
 
-		//XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, 0.1f, 1.0f, 1000.0f);
+		XMStoreFloat4x4(&OC.WorldViewProj, view * proj);
 
-		//XMStoreFloat4x4(&OC.WorldViewProj,lightView * P);
 
 		const UINT ConstantBufferSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 		m_device->CreateCommittedResource
