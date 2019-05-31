@@ -15,6 +15,8 @@
 #include <stdexcept>
 #include "DirectXTex.h"
 #include <iostream>
+#include <DirectXMath.h>
+#include "D3DUtil.h"
 
 //更简洁的向上边界对齐算法 内存管理中常用 请记住
 #define GRS_UPPER(A,B) ((UINT)(((A)+((B)-1))&~(B - 1)))

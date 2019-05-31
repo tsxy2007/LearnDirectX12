@@ -35,6 +35,7 @@ D3D12HelloTriangle::~D3D12HelloTriangle()
 void D3D12HelloTriangle::OnInit()
 {
 		LoadPipeline();
+		BuildDescriptorHeaps();
 		LoadAssets();
 }
 
@@ -125,14 +126,6 @@ void D3D12HelloTriangle::LoadPipeline()
 		srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		ThrowIfFailed(m_device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_srvHeap)));
-
-
-		D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-		cbvHeapDesc.NumDescriptors = 1;
-		cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		cbvHeapDesc.NodeMask = 0;
-		ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc, IID_PPV_ARGS(&m_cbvHeap)));
 	}
 
 	//创建RenderTargetView
@@ -150,6 +143,17 @@ void D3D12HelloTriangle::LoadPipeline()
 	m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator));
 }
 
+void D3D12HelloTriangle::BuildDescriptorHeaps()
+{
+	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
+	cbvHeapDesc.NumDescriptors = 1;
+	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	cbvHeapDesc.NodeMask = 0;
+	ThrowIfFailed(m_device->CreateDescriptorHeap(&cbvHeapDesc,
+		IID_PPV_ARGS(&mCbvHeap)));
+}
+
 void D3D12HelloTriangle::LoadAssets()
 {
 
@@ -157,32 +161,33 @@ void D3D12HelloTriangle::LoadAssets()
 	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
 
 	m_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData));
+	
 
 	CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC);
+	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0);
+	CD3DX12_ROOT_PARAMETER1 rootParameters[2];
+	rootParameters[0].InitAsDescriptorTable(_countof(ranges), ranges, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[1].InitAsConstantBufferView(0);
 
-	CD3DX12_ROOT_PARAMETER1 rootParameters[1];
-	rootParameters[0].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_PIXEL);
-
-	D3D12_STATIC_SAMPLER_DESC sampler = {};
-	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler.MipLODBias = 0;
-	sampler.MaxAnisotropy = 0;
-	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-	sampler.MinLOD = 0.f;
-	sampler.MaxLOD = D3D12_FLOAT32_MAX;
-	sampler.ShaderRegister = 0;
-	sampler.RegisterSpace = 0;
-	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	D3D12_STATIC_SAMPLER_DESC sampler[1] = {};
+	sampler[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	sampler[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	sampler[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	sampler[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	sampler[0].MipLODBias = 0;
+	sampler[0].MaxAnisotropy = 0;
+	sampler[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	sampler[0].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+	sampler[0].MinLOD = 0.f;
+	sampler[0].MaxLOD = D3D12_FLOAT32_MAX;
+	sampler[0].ShaderRegister = 0;
+	sampler[0].RegisterSpace = 0;
+	sampler[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	// 创建一个空的root signature
 	{
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, _countof(sampler), sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
 		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
@@ -201,8 +206,11 @@ void D3D12HelloTriangle::LoadAssets()
 
 		std::wstring shaderFile = GetAssetFullPath(L"shaders.hlsl");
 
-		ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+
+		vertexShader = CompileShader(shaderFile.c_str(), nullptr, "VSMain", "vs_5_0");
+		pixelShader = CompileShader(shaderFile.c_str(), nullptr, "PSMain", "ps_5_0");
+		//ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+		//ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 		
 		//定义vertex buff 输入布局方式
 		D3D12_INPUT_ELEMENT_DESC inputElementDesc[] =
@@ -236,7 +244,7 @@ void D3D12HelloTriangle::LoadAssets()
 		ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
 		//ThrowIfFailed(m_commandList->Close());
 	}
-	
+	D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
 	//创建Vertex Buffer
 	{
 		Vertex triangleVertices[] =
@@ -302,11 +310,23 @@ void D3D12HelloTriangle::LoadAssets()
 		// 创建常量缓存区
 		struct ObjectConstants
 		{
-			XMFLOAT4X4 WorldViewProj;
+			XMFLOAT4X4 WorldViewProj = Identity4x4();
 		};
 		ObjectConstants OC;
-		OC.WorldViewProj = Identity4x4();
-		const UINT ConstantBufferSize = 256; sizeof(ObjectConstants);
+
+		//XMFLOAT4X4 View = Identity4x4();
+		//XMFLOAT4X4 Proj = Identity4x4();
+
+		//FXMVECTOR EyePosition = { 0,0,1.f };
+		//FXMVECTOR FocusPosition = XMVectorZero();
+		//FXMVECTOR UpDirection = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+		//XMMATRIX lightView = XMMatrixLookAtLH(EyePosition, FocusPosition, UpDirection);
+
+		//XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * 3.1415926535f, 0.1f, 1.0f, 1000.0f);
+
+		//XMStoreFloat4x4(&OC.WorldViewProj,lightView * P);
+
+		const UINT ConstantBufferSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 		m_device->CreateCommittedResource
 		(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -320,14 +340,14 @@ void D3D12HelloTriangle::LoadAssets()
 		UINT8* pConstantDataBegin;
 		D3D12_RANGE ConstantReadRange = { 0,0 };
 		ThrowIfFailed(m_CBVBuffer->Map(0, &ConstantReadRange, reinterpret_cast<void**>(&pConstantDataBegin)));
-		memcpy(pConstantDataBegin, &OC, sizeof(ObjectConstants));
+		memcpy(pConstantDataBegin, &OC, ConstantBufferSize);
 		m_CBVBuffer->Unmap(0, nullptr);
-
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 		cbvDesc.BufferLocation = m_CBVBuffer->GetGPUVirtualAddress();
-		cbvDesc.SizeInBytes = ConstantBufferSize;
-		m_device->CreateConstantBufferView(&cbvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
+		cbvDesc.SizeInBytes = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+		m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+
 
 
 		// 加载Texture
@@ -335,50 +355,17 @@ void D3D12HelloTriangle::LoadAssets()
 		ScratchImage Image;
 		LoadFromDDSFile(L"test.DDS", DDS_FLAGS_NONE, &MetaData,Image);
 
-		D3D12_RESOURCE_DESC bufferdc;
 		{
-			bufferdc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-			bufferdc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-			bufferdc.Width = MetaData.width;// GRS_UPPER(size, D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);//D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 16;
-			bufferdc.Height = MetaData.height;
-			bufferdc.DepthOrArraySize = MetaData.arraySize;
-			bufferdc.MipLevels = MetaData.mipLevels;
-			bufferdc.Format = MetaData.format; //DXGI_FORMAT_R32G32B32A32_UINT;
-			bufferdc.SampleDesc.Count = 1;
-			bufferdc.SampleDesc.Quality = 0;
-			bufferdc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			bufferdc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		}
-		D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
-		{
+			D3D12_RESOURCE_DESC bufferdc = CD3DX12_RESOURCE_DESC::Tex2D(MetaData.format, MetaData.width, MetaData.height);
+			D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
+
 			// 创建上传堆
 
-
-			D3D12_RESOURCE_DESC Uploadbufferdc;
-			Uploadbufferdc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-			Uploadbufferdc.Alignment = info.Alignment;
-			Uploadbufferdc.Width = info.SizeInBytes;
-			Uploadbufferdc.Height = 1;
-			Uploadbufferdc.DepthOrArraySize = 1;
-			Uploadbufferdc.MipLevels = 1;
-			Uploadbufferdc.Format = DXGI_FORMAT_UNKNOWN;
-			Uploadbufferdc.SampleDesc.Count = 1;
-			Uploadbufferdc.SampleDesc.Quality = 0;
-			Uploadbufferdc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-			Uploadbufferdc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-
+			D3D12_RESOURCE_DESC Uploadbufferdc = CD3DX12_RESOURCE_DESC::Buffer(info.SizeInBytes);
 
 			ID3D12Heap* UploadHeap;
-			D3D12_HEAP_DESC UpLoadHeapDesc = {};
-			UpLoadHeapDesc.SizeInBytes = info.SizeInBytes;
-			UpLoadHeapDesc.Alignment = 0;
-			UpLoadHeapDesc.Properties.Type = D3D12_HEAP_TYPE_UPLOAD;
-			UpLoadHeapDesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-			UpLoadHeapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-			UpLoadHeapDesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS;
-
-
+			D3D12_HEAP_PROPERTIES UploadHeapProperties = { D3D12_HEAP_TYPE_UPLOAD };
+			D3D12_HEAP_DESC UpLoadHeapDesc = { info.SizeInBytes,UploadHeapProperties,info.Alignment };
 			ThrowIfFailed(m_device->CreateHeap(&UpLoadHeapDesc, IID_PPV_ARGS(&UploadHeap)));
 			ThrowIfFailed(m_device->CreatePlacedResource(
 				UploadHeap,
@@ -389,23 +376,18 @@ void D3D12HelloTriangle::LoadAssets()
 				IID_PPV_ARGS(&m_ITextureUpload)
 			));
 			ID3D12Heap* pUploadHeap;
-			D3D12_HEAP_DESC heapdesc;
-			{
-				heapdesc.SizeInBytes = info.SizeInBytes;// D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT * 16;
-				heapdesc.Properties.Type = D3D12_HEAP_TYPE_DEFAULT;
-				heapdesc.Properties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-				heapdesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-				heapdesc.Properties.CreationNodeMask = 1;
-				heapdesc.Properties.VisibleNodeMask = 1;
-				heapdesc.Alignment = 0;// D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-				heapdesc.Flags = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
-				m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap));
-			}
+			D3D12_HEAP_PROPERTIES DefaultHeapProperties = { D3D12_HEAP_TYPE_DEFAULT };
+			D3D12_HEAP_DESC heapdesc = { info.SizeInBytes ,DefaultHeapProperties,info.Alignment };
+			ThrowIfFailed(m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap)));
 			// 创建缓冲
 			ID3D12Resource* pTextureResource;
-			{
-				ThrowIfFailed(m_device->CreatePlacedResource(pUploadHeap, 0, &bufferdc, D3D12_RESOURCE_STATE_COPY_DEST, NULL, IID_PPV_ARGS(&pTextureResource)));
-			}
+			ThrowIfFailed(m_device->CreatePlacedResource(
+				pUploadHeap,
+				0,
+				&bufferdc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				NULL,
+				IID_PPV_ARGS(&pTextureResource)));
 
 
 			UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
@@ -444,8 +426,8 @@ void D3D12HelloTriangle::LoadAssets()
 			srvDesc.Format = bufferdc.Format;
 			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 			srvDesc.Texture2D.MipLevels = 1;
-			m_device->CreateShaderResourceView(pTextureResource, &srvDesc, m_srvHeap->GetCPUDescriptorHandleForHeapStart());
-			
+
+			m_device->CreateShaderResourceView(pTextureResource, &srvDesc, srvHeapHandle);
 		}
 	
 
@@ -509,6 +491,7 @@ void D3D12HelloTriangle::PopulateCommandList()
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
+	m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
@@ -517,7 +500,7 @@ void D3D12HelloTriangle::PopulateCommandList()
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
 	m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-
+	
 	// Record commands
 	const float clearColor[] = { 0.f,0.2f,.4f,1.f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
