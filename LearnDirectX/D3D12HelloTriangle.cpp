@@ -345,7 +345,7 @@ void D3D12HelloTriangle::LoadAssets()
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 		cbvDesc.BufferLocation = m_CBVBuffer->GetGPUVirtualAddress();
-		cbvDesc.SizeInBytes = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+		cbvDesc.SizeInBytes = ConstantBufferSize;
 		m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());
 
 
