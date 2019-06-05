@@ -335,10 +335,11 @@ void D3D12HelloTriangle::LoadAssets()
 		memcpy(pConstantDataBegin, &OC, ConstantBufferSize);
 		m_CBVBuffer->Unmap(0, nullptr);
 
-		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-		cbvDesc.BufferLocation = m_CBVBuffer->GetGPUVirtualAddress();
-		cbvDesc.SizeInBytes = ConstantBufferSize;
-		m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+		// 创建常量缓冲视图
+		//D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+		//cbvDesc.BufferLocation = m_CBVBuffer->GetGPUVirtualAddress();
+		//cbvDesc.SizeInBytes = ConstantBufferSize;
+		//m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());
 
 
 
