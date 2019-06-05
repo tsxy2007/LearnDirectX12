@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "D3DCamera.h"
 #include "D3D12HelloTriangle.h"
 
 #define MipLevel  9
@@ -6,16 +7,6 @@
 #define nWidth  256
 #define nHeight  206
 
-static DirectX::XMFLOAT4X4 Identity4x4()
-{
-	static DirectX::XMFLOAT4X4 I(
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.0f, 1.0f);
-
-	return I;
-};
 
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
 	DXSample(width,height,name),
@@ -24,7 +15,7 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
 	m_scissorRect(0,0,static_cast<LONG>(width),static_cast<LONG>(height)),
 	m_rtvDescriptorSize(0)
 {
-
+	Camera = std::make_shared<D3DCamera>( );
 }
 
 D3D12HelloTriangle::~D3D12HelloTriangle()
@@ -171,25 +162,25 @@ void D3D12HelloTriangle::LoadAssets()
 	rootParameters[0].InitAsDescriptorTable(_countof(ranges), ranges, D3D12_SHADER_VISIBILITY_PIXEL);
 	rootParameters[1].InitAsConstantBufferView(0);
 
-	D3D12_STATIC_SAMPLER_DESC sampler[1] = {};
-	sampler[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	sampler[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	sampler[0].MipLODBias = 0;
-	sampler[0].MaxAnisotropy = 0;
-	sampler[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	sampler[0].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-	sampler[0].MinLOD = 0.f;
-	sampler[0].MaxLOD = D3D12_FLOAT32_MAX;
-	sampler[0].ShaderRegister = 0;
-	sampler[0].RegisterSpace = 0;
-	sampler[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	D3D12_STATIC_SAMPLER_DESC samplers[1] = {};
+	samplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	samplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	samplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	samplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	samplers[0].MipLODBias = 0;
+	samplers[0].MaxAnisotropy = 0;
+	samplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	samplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+	samplers[0].MinLOD = 0.f;
+	samplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+	samplers[0].ShaderRegister = 0;
+	samplers[0].RegisterSpace = 0;
+	samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	// 创建一个空的root signature
 	{
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, _countof(sampler), sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, _countof(samplers), samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
 		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
@@ -312,18 +303,19 @@ void D3D12HelloTriangle::LoadAssets()
 		// 创建常量缓存区
 		struct ObjectConstants
 		{
-			XMFLOAT4X4 WorldViewProj = Identity4x4();
+			XMFLOAT4X4 WorldViewProj = d3dUtil::Identity4x4();
 		};
 		ObjectConstants OC;
 
-		FXMVECTOR EyePosition = { 0,0,-5.f };
-		FXMVECTOR FocusPosition = {0,2,0};
-		FXMVECTOR UpDirection = XMVectorSet(0.0f, -1.5f, 0.0f, .0f);
-		XMMATRIX view = XMMatrixLookAtLH(EyePosition, FocusPosition, UpDirection);
+		FXMVECTOR EyePosition = {  0.f,0.f,-5.f };
+		FXMVECTOR FocusPosition = {0,0,0};
+		FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
+		Camera->LookAt(EyePosition, FocusPosition, UpDirection);
+		Camera->SetLens(20.f, .5f, 1.0f, 100.0f);
+		Camera->SetPosition(1.f,1.f,-5.f);
+		Camera->UpdateViewMatrix();
 
-		XMMATRIX proj = XMMatrixPerspectiveFovLH(20.f, 1.f, 1.0f, 1000.0f);
-
-		XMStoreFloat4x4(&OC.WorldViewProj, view * proj);
+		XMStoreFloat4x4(&OC.WorldViewProj, Camera->GetViewAndProj());
 
 
 		const UINT ConstantBufferSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
@@ -455,6 +447,7 @@ void D3D12HelloTriangle::LoadAssets()
 
 void D3D12HelloTriangle::OnUpdate()
 {
+	
 }
 
 void D3D12HelloTriangle::OnRender()

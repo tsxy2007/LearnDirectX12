@@ -6,6 +6,7 @@ using namespace DirectX;
 
 using Microsoft::WRL::ComPtr;
 
+class D3DCamera;
 class D3D12HelloTriangle : public DXSample
 {
 public:
@@ -61,6 +62,7 @@ private:
 	ComPtr<ID3D12Fence1>m_fence;
 	UINT64 m_fenceValue;
 
+	std::shared_ptr<D3DCamera> Camera;
 	void LoadPipeline();
 
 	void BuildDescriptorHeaps();
