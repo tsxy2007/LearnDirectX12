@@ -95,7 +95,7 @@ void D3D12HelloTriangle::LoadPipeline()
 			nullptr,
 			&swapChain
 		)
-	);
+	); 
 
 	ThrowIfFailed(factory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER));
 	
@@ -358,7 +358,7 @@ void D3D12HelloTriangle::LoadAssets()
 
 			ID3D12Heap* UploadHeap;
 			D3D12_HEAP_PROPERTIES UploadHeapProperties = { D3D12_HEAP_TYPE_UPLOAD };
-			D3D12_HEAP_DESC UpLoadHeapDesc = { info.SizeInBytes,UploadHeapProperties,info.Alignment };
+			D3D12_HEAP_DESC UpLoadHeapDesc = { info.SizeInBytes,UploadHeapProperties };
 			ThrowIfFailed(m_device->CreateHeap(&UpLoadHeapDesc, IID_PPV_ARGS(&UploadHeap)));
 			ThrowIfFailed(m_device->CreatePlacedResource(
 				UploadHeap,
@@ -368,9 +368,11 @@ void D3D12HelloTriangle::LoadAssets()
 				nullptr,
 				IID_PPV_ARGS(&m_ITextureUpload)
 			));
+
+
 			ID3D12Heap* pUploadHeap;
 			D3D12_HEAP_PROPERTIES DefaultHeapProperties = { D3D12_HEAP_TYPE_DEFAULT };
-			D3D12_HEAP_DESC heapdesc = { info.SizeInBytes ,DefaultHeapProperties,info.Alignment };
+			D3D12_HEAP_DESC heapdesc = { info.SizeInBytes ,DefaultHeapProperties };
 			ThrowIfFailed(m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap)));
 			// ´´½¨»º³å
 			ID3D12Resource* pTextureResource;

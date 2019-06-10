@@ -47,3 +47,25 @@ Microsoft::WRL::ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device
 
 	return DefaultResource;
 }
+
+ComPtr<ID3D12Resource> d3dUtil::CreateBufferPlacedResource(ID3D12Device* InDevice,UINT64 SizeInBytes,D3D12_HEAP_TYPE InHeapType)
+{
+	ComPtr<ID3D12Resource> Resource;
+	D3D12_HEAP_PROPERTIES Heap_Properties = { InHeapType };
+	D3D12_HEAP_DESC HeapDesc = { SizeInBytes ,Heap_Properties};
+	D3D12_RESOURCE_DESC RD = CD3DX12_RESOURCE_DESC::Buffer(SizeInBytes);
+	ComPtr<ID3D12Heap> Heap;
+	InDevice->CreateHeap(&HeapDesc, IID_PPV_ARGS(&Heap));
+	InDevice->CreatePlacedResource(Heap.Get(),0, &RD, D3D12_RESOURCE_STATE_COPY_DEST,nullptr, IID_PPV_ARGS(&Resource));
+
+	//InDevice->CreateCommittedResource(
+	//	&Heap_Properties,
+	//	D3D12_HEAP_FLAG_NONE, 
+	//	&RD, 
+	//	D3D12_RESOURCE_STATE_COPY_DEST, 
+	//	nullptr, 
+	//	IID_PPV_ARGS(&Resource)
+	//);
+
+	return Resource;
+}

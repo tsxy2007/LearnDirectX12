@@ -19,6 +19,12 @@ public:
 		UINT64 Alignment,
 		Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 
+	static ComPtr<ID3D12Resource> CreateBufferPlacedResource(
+		ID3D12Device* InDevice,
+		UINT64 SizeInBytes,
+		D3D12_HEAP_TYPE InHeapType
+	);
+
 	static DirectX::XMFLOAT4X4 Identity4x4()
 	{
 		static DirectX::XMFLOAT4X4 I(

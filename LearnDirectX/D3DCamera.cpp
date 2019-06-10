@@ -20,7 +20,8 @@ void D3DCamera::LookAt(FXMVECTOR pos, FXMVECTOR target,FXMVECTOR worldUp)
 	XMStoreFloat3(&mCameraRight, R);
 	XMStoreFloat3(&mCameraUp, U);
 	XMMATRIX view = DirectX::XMMatrixLookAtLH(pos, target, worldUp);
-	XMStoreFloat4x4(&mViewMatrix, view);
+	XMStoreFloat4x4(&mViewMatrix, 
+		view);
 }
 
 void D3DCamera::SetLens(float FovAngleY, float AspectRatio, float NearZ, float FarZ)
