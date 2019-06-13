@@ -37,3 +37,42 @@ public:
 	};
 
 };
+
+struct MeshGeometry
+{
+	std::string Name;
+
+	ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
+	ComPtr<ID3DBlob> IndexBufferCPU = nullptr;
+
+	ComPtr<ID3D12Resource> VertexBufferGPU = nullptr;
+	ComPtr<ID3D12Resource> IndexBufferGPU = nullptr;
+
+	ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
+	ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
+
+	UINT VertexByteStride = 0;
+	UINT VertexBufferByteSize = 0;
+	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
+	UINT IndexBufferByteSize = 0;
+
+	D3D12_VERTEX_BUFFER_VIEW VertexBufferView()const
+	{
+		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+		m_vertexBufferView.BufferLocation = VertexBufferGPU->GetGPUVirtualAddress();
+		m_vertexBufferView.StrideInBytes = VertexByteStride;
+		m_vertexBufferView.SizeInBytes = VertexBufferByteSize;
+		return m_vertexBufferView;
+	}
+	D3D12_INDEX_BUFFER_VIEW IndexBufferView() const
+	{
+		D3D12_INDEX_BUFFER_VIEW IBV = { IndexBufferGPU->GetGPUVirtualAddress(),IndexBufferByteSize,IndexFormat };
+		return IBV;
+	}
+
+	void DisposeUploaders()
+	{
+		VertexBufferUploader = nullptr;
+		IndexBufferUploader = nullptr;
+	}
+};

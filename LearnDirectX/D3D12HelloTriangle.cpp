@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "D3DCamera.h"
 #include "D3D12HelloTriangle.h"
+#include "UploadBuffer.h"
 
 #define MipLevel  9
 
@@ -300,40 +301,8 @@ void D3D12HelloTriangle::LoadAssets()
 		m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	
 
-		// 创建常量缓存区
-		struct ObjectConstants
-		{
-			XMFLOAT4X4 WorldViewProj = d3dUtil::Identity4x4();
-		};
-		ObjectConstants OC;
+		
 
-		FXMVECTOR EyePosition = {  0.f,0.f,-5.f };
-		FXMVECTOR FocusPosition = {0,0,0};
-		FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
-		Camera->LookAt(EyePosition, FocusPosition, UpDirection);
-		Camera->SetLens(20.f, .5f, 1.0f, 100.0f);
-		Camera->SetPosition(1.f,1.f,-5.f);
-		Camera->UpdateViewMatrix();
-
-		XMStoreFloat4x4(&OC.WorldViewProj, Camera->GetViewAndProj());
-
-
-		const UINT ConstantBufferSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-		m_device->CreateCommittedResource
-		(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(ConstantBufferSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&m_CBVBuffer)
-		);
-
-		UINT8* pConstantDataBegin;
-		D3D12_RANGE ConstantReadRange = { 0,0 };
-		ThrowIfFailed(m_CBVBuffer->Map(0, &ConstantReadRange, reinterpret_cast<void**>(&pConstantDataBegin)));
-		memcpy(pConstantDataBegin, &OC, ConstantBufferSize);
-		m_CBVBuffer->Unmap(0, nullptr);
 
 		// 创建常量缓冲视图
 		//D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
@@ -441,7 +410,7 @@ void D3D12HelloTriangle::LoadAssets()
 		m_fenceValue = 1;
 		m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 		if (m_fenceEvent == nullptr)
-		{
+		{ 
 			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
 		}
 		WaitForPreviousFrame();
@@ -450,7 +419,19 @@ void D3D12HelloTriangle::LoadAssets()
 
 void D3D12HelloTriangle::OnUpdate()
 {
-	
+	ObjectConstants OC;
+
+	FXMVECTOR EyePosition = { 0.f,0.f,-5.f };
+	FXMVECTOR FocusPosition = { 0,0,0 };
+	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
+	Camera->LookAt(EyePosition, FocusPosition, UpDirection);
+	Camera->SetLens(20.f, .5f, 1.0f, 100.0f);
+	Camera->SetPosition(1.f, 1.f, -5.f);
+	Camera->UpdateViewMatrix();
+
+	ConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(m_device.Get(), 1, true);
+	XMStoreFloat4x4(&OC.WorldViewProj, Camera->GetViewAndProj());
+	ConstantBuffer->CopyData(0, OC);
 }
 
 void D3D12HelloTriangle::OnRender()
@@ -487,7 +468,8 @@ void D3D12HelloTriangle::PopulateCommandList()
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
-	m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
+	m_commandList->SetGraphicsRootConstantBufferView(1, ConstantBuffer->Resource()->GetGPUVirtualAddress());
+	//m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
