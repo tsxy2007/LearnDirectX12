@@ -58,16 +58,11 @@ struct MeshGeometry
 
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView()const
 	{
-		D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
-		m_vertexBufferView.BufferLocation = VertexBufferGPU->GetGPUVirtualAddress();
-		m_vertexBufferView.StrideInBytes = VertexByteStride;
-		m_vertexBufferView.SizeInBytes = VertexBufferByteSize;
-		return m_vertexBufferView;
+		return { VertexBufferGPU->GetGPUVirtualAddress(),VertexBufferByteSize,VertexByteStride };
 	}
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView() const
 	{
-		D3D12_INDEX_BUFFER_VIEW IBV = { IndexBufferGPU->GetGPUVirtualAddress(),IndexBufferByteSize,IndexFormat };
-		return IBV;
+		return { IndexBufferGPU->GetGPUVirtualAddress(),IndexBufferByteSize,IndexFormat };
 	}
 
 	void DisposeUploaders()

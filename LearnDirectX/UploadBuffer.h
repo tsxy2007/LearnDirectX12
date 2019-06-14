@@ -22,7 +22,8 @@ public:
 			nullptr,
 			IID_PPV_ARGS(&mUploadBuffer)
 		));
-		ThrowIfFailed(mUploadBuffer->Map(0, NULL, reinterpret_cast<void**>(&mMappedData)));
+		
+		ThrowIfFailed(mUploadBuffer->Map(0, &IndexReadRange, reinterpret_cast<void**>(&mMappedData)));
 	}
 	UploadBuffer(const UploadBuffer& rhs) = delete;
 	UploadBuffer& operator=(const UploadBuffer& rhs) = delete;
@@ -39,10 +40,16 @@ public:
 	{
 		memcpy(&mMappedData[elementIndex * mElementByteSize], &data, sizeof(T));
 	}
+
+	void CopyDataList(int elementIndex, int elementCount, const T* Data)
+	{
+		memcpy(mMappedData,&Data,elementCount);
+	}
 private:
 	Microsoft::WRL::ComPtr<ID3D12Resource> mUploadBuffer;
 	BYTE* mMappedData = nullptr;
 
 	UINT mElementByteSize = 0;
 	bool mIsConstantBuffer = false;
+	D3D12_RANGE IndexReadRange = { 0, 0 };
 };
