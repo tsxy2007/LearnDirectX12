@@ -41,7 +41,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>false</WholeProgramOptimization>
   </PropertyGroup>
@@ -130,17 +130,21 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="D3D12HelloTriangle.h" />
+    <ClInclude Include="D3DCamera.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="DirectXTex.h" />
     <ClInclude Include="DXSample.h" />
     <ClInclude Include="DXSampleHelper.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="UploadBuffer.h" />
     <ClInclude Include="Win32Application.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3D12HelloTriangle.cpp" />
+    <ClCompile Include="D3DCamera.cpp" />
     <ClCompile Include="DXSample.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="UploadBuffer.cpp" />
     <ClCompile Include="Win32Application.cpp" />
   </ItemGroup>
   <ItemGroup>
