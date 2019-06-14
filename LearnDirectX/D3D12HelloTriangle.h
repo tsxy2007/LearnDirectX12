@@ -14,6 +14,15 @@ struct ObjectConstants
 {
 	XMFLOAT4X4 WorldViewProj = d3dUtil::Identity4x4();
 };
+
+
+struct Vertex
+{
+	XMFLOAT3 position;
+	XMFLOAT2 uv;
+};
+
+
 class D3DCamera;
 class D3D12HelloTriangle : public DXSample
 {
@@ -32,11 +41,6 @@ public:
 	bool (*func)(...);
 private:
 	static const UINT FrameCount = 2;
-	struct Vertex
-	{
-		XMFLOAT3 position;
-		XMFLOAT2 uv;
-	};
 
 	CD3DX12_VIEWPORT m_viewport;
 	CD3DX12_RECT m_scissorRect;
@@ -63,6 +67,8 @@ private:
 	ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
 	std::unique_ptr<UploadBuffer<ObjectConstants>> ConstantBuffer = nullptr;
+	std::unique_ptr<UploadBuffer<Vertex>> VertexBuffer = nullptr;
+	std::unique_ptr<UploadBuffer<DWORD>> IndexBuffer = nullptr;
 
 	ComPtr<ID3D12Resource> m_CBVBuffer;
 	//D3D12_CONSTANT_BUFFER_VIEW_DESC

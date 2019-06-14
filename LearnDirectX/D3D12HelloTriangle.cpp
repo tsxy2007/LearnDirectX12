@@ -250,26 +250,18 @@ void D3D12HelloTriangle::LoadAssets()
 		};
 
 		const UINT vertexBufferSize = sizeof(triangleVertices);
-		m_device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
+		const UINT Count = vertexBufferSize / sizeof(Vertex);
 
-			IID_PPV_ARGS(&m_vertexBuffer)
-		);
-
-
-		// 复制这个三角形数据到vertex buffer
-		UINT8* pVertexDataBegin;
-		CD3DX12_RANGE readRange(0, 0);
-		ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-		memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
-		m_vertexBuffer->Unmap(0, nullptr);
+		VertexBuffer = std::make_unique<UploadBuffer<Vertex>>(m_device.Get(), Count, false);
+		//VertexBuffer->CopyDataList(0, Count, triangleVertices);
+		for (int i = 0; i < Count; i++)
+		{
+			Vertex v = triangleVertices[i];
+			VertexBuffer->CopyData(i, v);
+		}
 
 		//初始化vertexbuffer view
-		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+		m_vertexBufferView.BufferLocation = VertexBuffer->Resource()->GetGPUVirtualAddress();// m_vertexBuffer->GetGPUVirtualAddress();
 		m_vertexBufferView.StrideInBytes = sizeof(Vertex);
 		m_vertexBufferView.SizeInBytes = vertexBufferSize;
 
@@ -279,24 +271,18 @@ void D3D12HelloTriangle::LoadAssets()
 			0,2,3
 		};
 		const UINT IndexBufferSize = sizeof(iList);
-		m_device->CreateCommittedResource
-		(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(IndexBufferSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&m_IndexBuffer)
-		);
+		const UINT IndexCount = IndexBufferSize / sizeof(DWORD);
 
-		UINT8* pIndexDataBegin;
-		D3D12_RANGE IndexReadRange = { 0, 0 };
-		ThrowIfFailed(m_IndexBuffer->Map(0, &IndexReadRange, reinterpret_cast<void**>(&pIndexDataBegin)));
-		memcpy(pIndexDataBegin, iList, sizeof(iList));
-		m_IndexBuffer->Unmap(0, nullptr);
+
+		IndexBuffer = std::make_unique<UploadBuffer<DWORD>>(m_device.Get(),IndexCount,false);
+		//IndexBuffer->CopyDataList(0, IndexCount, iList);
+		for (UINT i = 0; i < IndexCount; i++)
+		{
+			IndexBuffer->CopyData(i, iList[i]);
+		}
 
 		// 初始化顶点数据
-		m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
+		m_IndexBufferView.BufferLocation = IndexBuffer->Resource()->GetGPUVirtualAddress() ;// m_IndexBuffer->GetGPUVirtualAddress();
 		m_IndexBufferView.SizeInBytes = IndexBufferSize;
 		m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	
