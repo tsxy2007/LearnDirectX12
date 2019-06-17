@@ -31,7 +31,7 @@ void DXSample::GetHardwareAdapter(IDXGIFactory6 * pFactory, IDXGIAdapter4 ** ppA
 	ComPtr<IDXGIAdapter4> adapter;
 	*ppAdapter = nullptr;
 	//枚举上下文
-	for (UINT adapterIndex = 0;DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapterByGpuPreference(adapterIndex, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE ,IID_PPV_ARGS(&adapter));++adapterIndex)
+	for (UINT adapterIndex = 0;DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapterByGpuPreference(adapterIndex, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,IID_PPV_ARGS(&adapter));++adapterIndex)
 	{
 		HRESULT hr;
 		DXGI_ADAPTER_DESC3 desc;
@@ -40,7 +40,7 @@ void DXSample::GetHardwareAdapter(IDXGIFactory6 * pFactory, IDXGIAdapter4 ** ppA
 		{
 			continue;
 		}
-		hr = D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, _uuidof(ID3D12Device), nullptr);
+		hr = D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_12_0, _uuidof(ID3D12Device), nullptr);
 		if (SUCCEEDED(hr))
 		{
 			break;
