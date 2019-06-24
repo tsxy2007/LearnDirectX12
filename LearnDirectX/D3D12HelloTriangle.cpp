@@ -2,6 +2,7 @@
 #include "D3DCamera.h"
 #include "D3D12HelloTriangle.h"
 #include "UploadBuffer.h"
+#include "FrameResource.h"
 
 #define MipLevel  9
 
@@ -16,7 +17,7 @@ D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring nam
 	m_scissorRect(0,0,static_cast<LONG>(width),static_cast<LONG>(height)),
 	m_rtvDescriptorSize(0)
 {
-	Camera = std::make_shared<D3DCamera>( );
+	mCamera = std::make_shared<D3DCamera>( );
 }
 
 D3D12HelloTriangle::~D3D12HelloTriangle()
@@ -410,13 +411,13 @@ void D3D12HelloTriangle::OnUpdate()
 	FXMVECTOR EyePosition = { 0.f,0.f,-5.f };
 	FXMVECTOR FocusPosition = { 0,0,0 };
 	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
-	Camera->LookAt(EyePosition, FocusPosition, UpDirection);
-	Camera->SetLens(20.f, .5f, 1.0f, 100.0f);
-	Camera->SetPosition(1.f, 1.f, -5.f);
-	Camera->UpdateViewMatrix();
+	mCamera->LookAt(EyePosition, FocusPosition, UpDirection);
+	mCamera->SetLens(20.f, .5f, 1.0f, 100.0f);
+	mCamera->SetPosition(1.f, 1.f, -5.f);
+	mCamera->UpdateViewMatrix();
 
 	ConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(m_device.Get(), 1, true);
-	XMStoreFloat4x4(&OC.WorldViewProj, Camera->GetViewAndProj());
+	XMStoreFloat4x4(&OC.WorldViewProj, mCamera->GetViewAndProj());
 	ConstantBuffer->CopyData(0, OC);
 }
 
@@ -490,5 +491,38 @@ void D3D12HelloTriangle::WaitForPreviousFrame()
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+}
+
+void D3D12HelloTriangle::BuildFrameResources()
+{
+	for (int i = 0; i < gNumFrameResources; i++)
+	{
+		mFrameResources.push_back(std::make_unique<struct FrameResource>(m_device.Get(),1,(UINT)mAllRitem.size()));
+	}
+}
+
+void D3D12HelloTriangle::UpdateObjectCBs()
+{
+	auto currentObjectCB = mCurrentFrameResource->ObjectCB.get();
+	for (auto& e : mAllRitem)
+	{
+		if (e->NumFrameDirty > 0)
+		{
+			XMMATRIX world = XMLoadFloat4x4(&e->World);
+			ObjectConstants objConstants;
+			XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(world));
+			currentObjectCB->CopyData(e->ObjCBIndex, objConstants);
+			e->NumFrameDirty--;
+		}
+	}
+}
+
+void D3D12HelloTriangle::UpdateMainPassCB()
+{
+	XMMATRIX view = mCamera->GetView();
+	XMMATRIX proj = mCamera->GetProj();
+	
+	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+	//XMMATRIX invView = 
 }
 
