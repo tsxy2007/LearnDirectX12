@@ -2,6 +2,30 @@
 #include "D3DUtil.h"
 #include "DXSampleHelper.h"
 #include "d3dx12.h"
+using namespace DirectX;
+
+const int gNumFrameResources = 3;
+
+// 创建常量缓存区
+struct ObjectConstants
+{
+	XMFLOAT4X4 WorldViewProj = d3dUtil::Identity4x4();
+};
+
+
+struct RenderItem
+{
+	RenderItem() = default;
+	XMFLOAT4X4 World = d3dUtil::Identity4x4();
+	int NumFrameDirty = gNumFrameResources;
+	UINT ObjCBIndex = -1;
+	MeshGeometry* Geo = nullptr;
+	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	UINT IndexCount = 0;
+	UINT StartIndexLocation = 0;
+	UINT BaseVertexLocation = 0;
+};
+
 template<typename T>
 class UploadBuffer
 {

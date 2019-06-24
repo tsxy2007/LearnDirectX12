@@ -2,6 +2,7 @@
 #include "D3DCamera.h"
 #include "D3D12HelloTriangle.h"
 #include "UploadBuffer.h"
+#include "FrameResource.h"
 
 #define MipLevel  9
 
@@ -490,5 +491,21 @@ void D3D12HelloTriangle::WaitForPreviousFrame()
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 	}
 	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+}
+
+void D3D12HelloTriangle::BuildFrameResources()
+{
+	for (int i = 0; i < gNumFrameResources; i++)
+	{
+		mFrameResources.push_back(std::make_unique<struct FrameResource>(m_device.Get(),1,(UINT)mAllRitem.size()));
+	}
+}
+
+void D3D12HelloTriangle::UpdateObjectCBs()
+{
+}
+
+void D3D12HelloTriangle::UpdateMainPassCB()
+{
 }
 

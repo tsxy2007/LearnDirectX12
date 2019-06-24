@@ -8,14 +8,6 @@ using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
 
-
-// 创建常量缓存区
-struct ObjectConstants
-{
-	XMFLOAT4X4 WorldViewProj = d3dUtil::Identity4x4();
-};
-
-
 struct Vertex
 {
 	XMFLOAT3 position;
@@ -39,6 +31,20 @@ public:
 	void Print(int inLogLevel, const char* inFormat, Args ... args);
 
 	bool (*func)(...);
+
+
+private:
+	void LoadPipeline();
+
+	void BuildDescriptorHeaps();
+	void LoadAssets();
+	void PopulateCommandList();
+	void WaitForPreviousFrame(); 
+
+	void BuildFrameResources();
+
+	void UpdateObjectCBs();
+	void UpdateMainPassCB();
 private:
 	static const UINT FrameCount = 2;
 
@@ -48,7 +54,7 @@ private:
 	ComPtr<ID3D12Device> m_device;
 	ComPtr<ID3D12Resource1> m_renderTargets[FrameCount];
 	ComPtr<ID3D12Resource>	m_ITextureUpload;
-	
+
 	ComPtr<ID3D12CommandAllocator>m_commandAllocator;
 	ComPtr< ID3D12CommandQueue>m_commandQueue;
 	ComPtr< ID3D12RootSignature> m_rootSignature;
@@ -79,11 +85,14 @@ private:
 	UINT64 m_fenceValue;
 
 	std::shared_ptr<D3DCamera> Camera;
-	void LoadPipeline();
+	
+	static const int NumFrameResource = 3;
+	std::vector<std::unique_ptr<struct FrameResource>> mFrameResources;
+	struct FrameResource* mCurrentFrameResource = nullptr;
+	int mCurrFrameResourceIndex = 0;
 
-	void BuildDescriptorHeaps();
-	void LoadAssets();
-	void PopulateCommandList();
-	void WaitForPreviousFrame();
+	std::vector<std::unique_ptr<RenderItem>> mAllRitem;
+	std::vector<RenderItem*> mOpaqueRitem;
+	std::vector<RenderItem*> mTransparentRitem;
 };
 
