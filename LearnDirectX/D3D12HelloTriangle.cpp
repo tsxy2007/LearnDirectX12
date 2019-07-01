@@ -30,6 +30,7 @@ void D3D12HelloTriangle::OnInit()
 		LoadPipeline();
 		BuildDescriptorHeaps();
 		LoadAssets();
+		BuildBoxGeometry();
 }
 
 void D3D12HelloTriangle::LoadPipeline()
@@ -474,6 +475,10 @@ void D3D12HelloTriangle::PopulateCommandList()
 	m_commandList->IASetIndexBuffer(&m_IndexBufferView);
 	m_commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 
+	m_commandList->IASetVertexBuffers(1, 1, &mBoxGeo->VertexBufferView());
+	m_commandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
+	m_commandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
+
 	// Indicate
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
@@ -499,6 +504,74 @@ void D3D12HelloTriangle::BuildFrameResources()
 	{
 		mFrameResources.push_back(std::make_unique<struct FrameResource>(m_device.Get(),1,(UINT)mAllRitem.size()));
 	}
+}
+
+void D3D12HelloTriangle::BuildBoxGeometry()
+{
+	std::array<Vertex1, 8> vertices =
+	{
+		Vertex1({XMFLOAT3(-1.f,-1.f,-1.f),XMFLOAT4(Colors::White)}),
+		Vertex1({XMFLOAT3(-1.f,+1.f,-1.f),XMFLOAT4(Colors::Black)}),
+		Vertex1({XMFLOAT3(+1.f,+1.f,-1.f),XMFLOAT4(Colors::Red)}),
+		Vertex1({XMFLOAT3(+1.f,-1.f,-1.f),XMFLOAT4(Colors::Green)}),
+
+		Vertex1({XMFLOAT3(-1.f,-1.f,+1.f),XMFLOAT4(Colors::Blue)}),
+		Vertex1({XMFLOAT3(-1.f,+1.f,+1.f),XMFLOAT4(Colors::Yellow)}),
+		Vertex1({XMFLOAT3(+1.f,+1.f,+1.f),XMFLOAT4(Colors::Cyan)}),
+		Vertex1({XMFLOAT3(+1.f,-1.f,+1.f),XMFLOAT4(Colors::Magenta)}),
+	};
+	std::array<std::uint16_t, 36> indices =
+	{
+		0,1,2,
+		0,2,3,
+
+		4, 6, 5,
+		4, 7, 6,
+
+		4, 5, 1,
+		4, 1, 0,
+
+		3, 2, 6,
+		3, 6, 7,
+
+		1, 5, 6,
+		1, 6, 2,
+
+		4, 0, 3,
+		4, 3, 7
+	};
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex1);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	mBoxGeo = std::make_unique<MeshGeometry>();
+	mBoxGeo->Name = "boxGeo";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
+	CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
+	CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(m_device.Get(),
+		m_commandList.Get(), vertices.data(), vbByteSize,
+		mBoxGeo->VertexBufferUploader);
+
+	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(m_device.Get(),
+		m_commandList.Get(), indices.data(), ibByteSize,
+		mBoxGeo->IndexBufferUploader);
+
+	mBoxGeo->VertexByteStride = sizeof(Vertex1);
+	mBoxGeo->VertexBufferByteSize = vbByteSize;
+	mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	mBoxGeo->IndexBufferByteSize = ibByteSize;
+	
+	SubmeshGeometry submesh;
+	submesh.IndexCount = (UINT)indices.size();
+	submesh.StartIndexLocation = 0;
+	submesh.BaseVertexLocation = 0;
+
+	mBoxGeo->DrawArgs["box"] = submesh;
 }
 
 void D3D12HelloTriangle::UpdateObjectCBs()

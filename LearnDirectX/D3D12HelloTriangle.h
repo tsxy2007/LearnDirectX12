@@ -14,6 +14,12 @@ struct Vertex
 	XMFLOAT2 uv;
 };
 
+struct Vertex1
+{
+	XMFLOAT3 Pos;
+	XMFLOAT4 Color;
+};
+
 
 class D3DCamera;
 class D3D12HelloTriangle : public DXSample
@@ -42,6 +48,7 @@ private:
 	void WaitForPreviousFrame(); 
 
 	void BuildFrameResources();
+	void BuildBoxGeometry();
 
 	void UpdateObjectCBs();
 	void UpdateMainPassCB();
@@ -94,5 +101,7 @@ private:
 	std::vector<std::unique_ptr<RenderItem>> mAllRitem;
 	std::vector<RenderItem*> mOpaqueRitem;
 	std::vector<RenderItem*> mTransparentRitem;
+
+	std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
 };
 
