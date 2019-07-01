@@ -518,7 +518,7 @@ void D3D12HelloTriangle::UpdateObjectCBs()
 }
 
 void D3D12HelloTriangle::UpdateMainPassCB()
-{
+{ 
 	XMMATRIX view = mCamera->GetView();
 	XMMATRIX proj = mCamera->GetProj();
 	
