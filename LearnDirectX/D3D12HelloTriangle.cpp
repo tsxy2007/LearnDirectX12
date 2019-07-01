@@ -30,6 +30,7 @@ void D3D12HelloTriangle::OnInit()
 		LoadPipeline();
 		BuildDescriptorHeaps();
 		LoadAssets();
+		BuildBoxGeometry();
 }
 
 void D3D12HelloTriangle::LoadPipeline()
@@ -211,8 +212,8 @@ void D3D12HelloTriangle::LoadAssets()
 		D3D12_INPUT_ELEMENT_DESC inputElementDesc[] =
 		{
 			{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
-			//{"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+			//{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 
 		};
 
@@ -244,10 +245,10 @@ void D3D12HelloTriangle::LoadAssets()
 	{
 		Vertex triangleVertices[] =
 		{
-			{ { 0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.f, 0.f } },
-			{ { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f } },
-			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f } },
-			{ { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f } },
+			{ { 0.25f, 0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::White), { 1.f, 0.f } },
+			{ { 0.25f, -0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::Black), { 1.0f, 1.0f } },
+			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::Green), { 0.0f, 1.0f } },
+			{ { -0.25f, 0.25f * m_aspectRatio, 0.0f }, XMFLOAT4(Colors::Blue),{ 0.0f, 0.0f } },
 		};
 
 		const UINT vertexBufferSize = sizeof(triangleVertices);
@@ -404,24 +405,23 @@ void D3D12HelloTriangle::LoadAssets()
 	}
 }
 
-void D3D12HelloTriangle::OnUpdate()
+void D3D12HelloTriangle::OnUpdate(const GameTimer& gt)
 {
 	ObjectConstants OC;
 
-	FXMVECTOR EyePosition = { 0.f,0.f,-5.f };
-	FXMVECTOR FocusPosition = { 0,0,0 };
-	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
-	mCamera->LookAt(EyePosition, FocusPosition, UpDirection);
-	mCamera->SetLens(20.f, .5f, 1.0f, 100.0f);
-	mCamera->SetPosition(1.f, 1.f, -5.f);
-	mCamera->UpdateViewMatrix();
+	float x = 5.0f * sinf(XM_PIDIV4) * cosf(1.5f * XM_PI);
+	float z = 5.0f * sinf(XM_PIDIV4) * sinf(1.5f * XM_PI);
+	float y = 5.0f * cosf(XM_PIDIV4);
 
+	// Build the view matrix.
+	mCamera->MoveBy(mDeltaX, mDeltaY, mDeltaZ);
+	mCamera->UpdateViewMatrix();
 	ConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(m_device.Get(), 1, true);
 	XMStoreFloat4x4(&OC.WorldViewProj, mCamera->GetViewAndProj());
 	ConstantBuffer->CopyData(0, OC);
 }
 
-void D3D12HelloTriangle::OnRender()
+void D3D12HelloTriangle::OnRender(const GameTimer& gt)
 {
 	// ¼ÇÂ¼ ËùÓÐÃüÁî
 	PopulateCommandList();
@@ -439,6 +439,32 @@ void D3D12HelloTriangle::OnDestroy()
 {
 	WaitForPreviousFrame();
 	CloseHandle(m_fenceEvent);
+}
+
+void D3D12HelloTriangle::OnMouseDown(WPARAM btnState, int x, int y)
+{
+	mLastMousePos.x = x;
+	mLastMousePos.y = y;
+}
+
+void D3D12HelloTriangle::OnMouseUp(WPARAM btnState, int x, int y)
+{
+	mDeltaX = 0.f;
+	mDeltaY = 0.f;
+	mDeltaZ = 0.f;
+}
+
+void D3D12HelloTriangle::OnMouseMove(WPARAM btnState, int x, int y)
+{
+	mDeltaX = 0.f;
+	mDeltaY = 0.f;
+	if ((btnState & MK_LBUTTON)!=0)
+	{
+		mDeltaX = 0.001f * (x - mLastMousePos.x);
+		mDeltaY = 0.001f * (y - mLastMousePos.y);
+	}
+	mLastMousePos.x = x;
+	mLastMousePos.y = y;
 }
 
 
@@ -474,6 +500,10 @@ void D3D12HelloTriangle::PopulateCommandList()
 	m_commandList->IASetIndexBuffer(&m_IndexBufferView);
 	m_commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 
+	m_commandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
+	m_commandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
+	m_commandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
+
 	// Indicate
 	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
@@ -499,6 +529,84 @@ void D3D12HelloTriangle::BuildFrameResources()
 	{
 		mFrameResources.push_back(std::make_unique<struct FrameResource>(m_device.Get(),1,(UINT)mAllRitem.size()));
 	}
+}
+
+void D3D12HelloTriangle::BuildBoxGeometry()
+{
+	std::array<Vertex, 8> vertices =
+	{
+		Vertex({XMFLOAT3(-1.f,-1.f* m_aspectRatio,1.f),XMFLOAT4(Colors::White)}),
+		Vertex({XMFLOAT3(-1.f,+1.f * m_aspectRatio,1.f),XMFLOAT4(Colors::Black)}),
+		Vertex({XMFLOAT3(+1.f,+1.f * m_aspectRatio,1.f),XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.f,-1.f * m_aspectRatio,1.f),XMFLOAT4(Colors::Green)}),
+
+		Vertex({XMFLOAT3(-1.f,-1.f * m_aspectRatio,2.f),XMFLOAT4(Colors::Blue)}),
+		Vertex({XMFLOAT3(-1.f,+1.f * m_aspectRatio,2.f),XMFLOAT4(Colors::Yellow)}),
+		Vertex({XMFLOAT3(+1.f,+1.f * m_aspectRatio,2.f),XMFLOAT4(Colors::Cyan)}),
+		Vertex({XMFLOAT3(+1.f,-1.f * m_aspectRatio,2.f),XMFLOAT4(Colors::Magenta)}),
+	};
+	std::array<std::uint16_t, 36> indices =
+	{
+		0,1,2,
+		0,2,3,
+
+		4, 6, 5,
+		4, 7, 6,
+
+		4, 5, 1,
+		4, 1, 0,
+
+		3, 2, 6,
+		3, 6, 7,
+
+		1, 5, 6,
+		1, 6, 2,
+
+		4, 0, 3,
+		4, 3, 7
+	};
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	mBoxGeo = std::make_unique<MeshGeometry>();
+	mBoxGeo->Name = "boxGeo";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
+	CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
+	CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(m_device.Get(),
+		m_commandList.Get(), vertices.data(), vbByteSize,
+		mBoxGeo->VertexBufferUploader);
+
+	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(m_device.Get(),
+		m_commandList.Get(), indices.data(), ibByteSize,
+		mBoxGeo->IndexBufferUploader);
+
+	mBoxGeo->VertexByteStride = sizeof(Vertex);
+	mBoxGeo->VertexBufferByteSize = vbByteSize;
+	mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
+	mBoxGeo->IndexBufferByteSize = ibByteSize;
+	
+	SubmeshGeometry submesh;
+	submesh.IndexCount = (UINT)indices.size();
+	submesh.StartIndexLocation = 0;
+	submesh.BaseVertexLocation = 0;
+
+	mBoxGeo->DrawArgs["box"] = submesh;
+}
+
+void D3D12HelloTriangle::BuildCamera()
+{
+	FXMVECTOR EyePosition = { 0.f, 0.f, -5.f };
+	FXMVECTOR FocusPosition = { 0, 0, 0 };
+	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
+	mCamera->LookAt(EyePosition, FocusPosition, UpDirection);
+	mCamera->SetLens(20.f, .5f, 1.0f, 100.0f);
+	mCamera->SetPosition(EyePosition);
 }
 
 void D3D12HelloTriangle::UpdateObjectCBs()

@@ -15,6 +15,10 @@ public:
 
 	void SetPosition(float X, float Y, float Z);
 
+	void SetPosition(DirectX::FXMVECTOR pos);
+
+	void MoveBy(float X = 0.f, float Y = 0.f, float Z = 0.f);
+
 	DirectX::XMMATRIX GetView() const;
 
 	DirectX::XMMATRIX GetProj() const;

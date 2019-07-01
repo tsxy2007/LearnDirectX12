@@ -3,7 +3,7 @@
 #include "DXSample.h"
 
 HWND Win32Application::m_hwnd = nullptr;
-
+GameTimer GT;
 int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 {
 	int argc;
@@ -57,6 +57,7 @@ int Win32Application::Run(DXSample* pSample, HINSTANCE hInstance, int nCmdShow)
 		//Sleep(1 / 60.f);
 	}
 
+	GT.Reset();
 	pSample->OnDestroy();
 
 	// Return this part of the WM_QUIT message to Windows.
@@ -68,8 +69,23 @@ LRESULT CALLBACK Win32Application::WindowProc(HWND hWnd, UINT message, WPARAM wP
 {
 	DXSample* pSample = reinterpret_cast<DXSample*>(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 
+	
+
+
 	switch (message)
 	{
+	case WM_ACTIVATE:
+	{
+		if (LOWORD(wParam) == WA_INACTIVE)
+		{
+			GT.Stop();
+		}
+		else
+		{
+			GT.Start();
+		}
+		return 0;
+	}
 	case WM_CREATE:
 	{
 		// Save the DXSample* passed in to CreateWindow.
@@ -95,13 +111,36 @@ LRESULT CALLBACK Win32Application::WindowProc(HWND hWnd, UINT message, WPARAM wP
 	case WM_PAINT:
 		if (pSample)
 		{
-			pSample->OnUpdate();
-			pSample->OnRender();
+			GT.Tick();
+			pSample->OnUpdate(GT);
+			pSample->OnRender(GT);
 		}
 		return 0;
-
+	case WM_ENTERSIZEMOVE:
+	{
+		GT.Stop();
+		return 0;
+	}
+	case WM_EXITSIZEMOVE:
+	{
+		GT.Start();
+		return 0;
+	}
 	case WM_DESTROY:
 		PostQuitMessage(0);
+		return 0;
+	case WM_MOUSEMOVE:
+		pSample->OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+	case WM_LBUTTONDOWN:
+	case WM_MBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+		pSample->OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+		return 0;
+	case WM_LBUTTONUP:
+	case WM_MBUTTONUP:
+	case WM_RBUTTONUP:
+		pSample->OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 		return 0;
 	}
 

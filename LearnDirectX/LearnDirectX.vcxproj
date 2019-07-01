@@ -145,8 +145,10 @@
   <ItemGroup>
     <ClCompile Include="D3D12HelloTriangle.cpp" />
     <ClCompile Include="D3DCamera.cpp" />
+    <ClCompile Include="D3DUtil.cpp" />
     <ClCompile Include="DXSample.cpp" />
     <ClCompile Include="FrameResource.cpp" />
+    <ClCompile Include="GameTimer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="UploadBuffer.cpp" />
     <ClCompile Include="Win32Application.cpp" />
