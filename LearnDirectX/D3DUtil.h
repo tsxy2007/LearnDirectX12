@@ -16,7 +16,6 @@ public:
 		ID3D12GraphicsCommandList* cmList,
 		const void* initData,
 		UINT64 byteSize,
-		UINT64 Alignment,
 		Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 
 	static ComPtr<ID3D12Resource> CreateBufferPlacedResource(
