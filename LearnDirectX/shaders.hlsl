@@ -33,19 +33,19 @@ struct PSInput
 	float2 uv : TEXCOORD;
 };
 
-PSInput VSMain(float4 position : POSITION,float4 Color, float2 uv : TEXCOORD)
+PSInput VSMain(float4 position : POSITION, float2 uv : TEXCOORD)
 {
 	PSInput result;
 
 	result.position = mul(GProjectionMatrix, position);
-	result.color = Color;
-	//result.uv = uv;
+	//result.color = Color;
+	result.uv = uv;
 
 	return result;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-	return input.color;
-	//return g_texture.Sample(g_sampler, input.uv);
+	//return input.color;
+	return g_texture.Sample(g_sampler, input.uv);
 }
