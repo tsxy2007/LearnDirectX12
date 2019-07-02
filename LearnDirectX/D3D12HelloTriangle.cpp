@@ -29,8 +29,12 @@ void D3D12HelloTriangle::OnInit()
 {
 		LoadPipeline();
 		BuildDescriptorHeaps();
-		LoadAssets();
+		BuildConstantBuffers();
+		BuildRootSignature();
+		BuildShadersAndInputLayout();
+		BuildPSO();
 		BuildBoxGeometry();
+		LoadAssets();
 }
 
 void D3D12HelloTriangle::LoadPipeline()
@@ -137,6 +141,11 @@ void D3D12HelloTriangle::LoadPipeline()
 	m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator));
 
 	m_device->SetName(L"Device");
+
+	//  创建命令队列
+	{
+		ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
+	}
 }
 
 void D3D12HelloTriangle::BuildDescriptorHeaps()
@@ -151,244 +160,141 @@ void D3D12HelloTriangle::BuildDescriptorHeaps()
 }
 
 void D3D12HelloTriangle::LoadAssets()
-{
-
-	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
-	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-
-	m_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData));
+{	
 	
-
-	CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
-	CD3DX12_ROOT_PARAMETER1 rootParameters[2];
-	rootParameters[0].InitAsDescriptorTable(_countof(ranges), ranges, D3D12_SHADER_VISIBILITY_PIXEL);
-	rootParameters[1].InitAsConstantBufferView(0);
-
-	D3D12_STATIC_SAMPLER_DESC samplers[1] = {};
-	samplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	samplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	samplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	samplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
-	samplers[0].MipLODBias = 0;
-	samplers[0].MaxAnisotropy = 0;
-	samplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	samplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-	samplers[0].MinLOD = 0.f;
-	samplers[0].MaxLOD = D3D12_FLOAT32_MAX;
-	samplers[0].ShaderRegister = 0;
-	samplers[0].RegisterSpace = 0;
-	samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-	// 创建一个空的root signature
-	{
-		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, _countof(samplers), samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-		ComPtr<ID3DBlob> signature;
-		ComPtr<ID3DBlob> error;
-		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
-		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature));
-	}
-
-	// 创建一个pipeline state 包含编译和加载shader
-	{
-		ComPtr<ID3DBlob> vertexShader;
-		ComPtr<ID3DBlob> pixelShader;
-#if defined (_DEBUG)
-		UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-		UINT compileFlags = 0;
-#endif
-
-		std::wstring shaderFile = GetAssetFullPath(L"shaders.hlsl");
-
-
-		vertexShader = CompileShader(shaderFile.c_str(), nullptr, "VSMain", "vs_5_0");
-		pixelShader = CompileShader(shaderFile.c_str(), nullptr, "PSMain", "ps_5_0");
-		//ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		//ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
-		
-		//定义vertex buff 输入布局方式
-		D3D12_INPUT_ELEMENT_DESC inputElementDesc[] =
-		{
-			{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
-			//{"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-
-		};
-
-		// 创建pso
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-		psoDesc.InputLayout = { inputElementDesc ,_countof(inputElementDesc)};
-		psoDesc.pRootSignature = m_rootSignature.Get();
-		psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-		psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		psoDesc.DepthStencilState.DepthEnable = FALSE;
-		psoDesc.DepthStencilState.StencilEnable = FALSE;
-		psoDesc.SampleMask = UINT_MAX;
-		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		psoDesc.NumRenderTargets = 1;
-		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-		psoDesc.SampleDesc.Count = 1;
-		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
-	}
-
-	//  创建命令队列
-	{
-		ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
-		//ThrowIfFailed(m_commandList->Close());
-	}
 	D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
 	//创建Vertex Buffer
 	{
-		Vertex triangleVertices[] =
-		{
-			{ { 0.25f, 0.25f * m_aspectRatio, 0.0f }, { 1.f, 0.f } },
-			{ { 0.25f, -0.25f * m_aspectRatio, 0.0f }, { 1.0f, 1.0f } },
-			{ { -0.25f, -0.25f * m_aspectRatio, 0.0f }, { 0.0f, 1.0f } },
-			{ { -0.25f, 0.25f * m_aspectRatio, 0.0f }, { 0.0f, 0.0f } },
-		};
-
-		const UINT vertexBufferSize = sizeof(triangleVertices);
-		const UINT Count = vertexBufferSize / sizeof(Vertex);
-
-		VertexBuffer = std::make_unique<UploadBuffer<Vertex>>(m_device.Get(), Count, false);
-		//VertexBuffer->CopyDataList(0, Count, triangleVertices);
-		for (int i = 0; i < Count; i++)
-		{
-			Vertex v = triangleVertices[i];
-			VertexBuffer->CopyData(i, v);
-		}
-
-		//初始化vertexbuffer view
-		m_vertexBufferView.BufferLocation = VertexBuffer->Resource()->GetGPUVirtualAddress();// m_vertexBuffer->GetGPUVirtualAddress();
-		m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-		m_vertexBufferView.SizeInBytes = vertexBufferSize;
-
-		DWORD iList[] =
-		{
-			0,1,2,
-			0,2,3
-		};
-		const UINT IndexBufferSize = sizeof(iList);
-		const UINT IndexCount = IndexBufferSize / sizeof(DWORD);
-
-
-		IndexBuffer = std::make_unique<UploadBuffer<DWORD>>(m_device.Get(),IndexCount,false);
-		//IndexBuffer->CopyDataList(0, IndexCount, iList);
-		for (UINT i = 0; i < IndexCount; i++)
-		{
-			IndexBuffer->CopyData(i, iList[i]);
-		}
-
-		// 初始化顶点数据
-		m_IndexBufferView.BufferLocation = IndexBuffer->Resource()->GetGPUVirtualAddress() ;// m_IndexBuffer->GetGPUVirtualAddress();
-		m_IndexBufferView.SizeInBytes = IndexBufferSize;
-		m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
-	
-
 		
 
+		//Vertex triangleVertices[] =
+		//{
+		//	{ { 0.25f, 0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::White), { 1.f, 0.f } },
+		//	{ { 0.25f, -0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::Black), { 1.0f, 1.0f } },
+		//	{ { -0.25f, -0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::Green), { 0.0f, 1.0f } },
+		//	{ { -0.25f, 0.25f * m_aspectRatio, 0.0f }, XMFLOAT4(Colors::Blue),{ 0.0f, 0.0f } },
+		//};
 
-		// 创建常量缓冲视图
-		//D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-		//cbvDesc.BufferLocation = m_CBVBuffer->GetGPUVirtualAddress();
-		//cbvDesc.SizeInBytes = ConstantBufferSize;
-		//m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+		//const UINT vertexBufferSize = sizeof(triangleVertices);
+		//const UINT Count = vertexBufferSize / sizeof(Vertex);
 
+		//VertexBuffer = std::make_unique<UploadBuffer<Vertex>>(m_device.Get(), Count, false);
+		////VertexBuffer->CopyDataList(0, Count, triangleVertices);
+		//for (int i = 0; i < Count; i++)
+		//{
+		//	Vertex v = triangleVertices[i];
+		//	VertexBuffer->CopyData(i, v);
+		//}
 
+		////初始化vertexbuffer view
+		//m_vertexBufferView.BufferLocation = VertexBuffer->Resource()->GetGPUVirtualAddress();// m_vertexBuffer->GetGPUVirtualAddress();
+		//m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+		//m_vertexBufferView.SizeInBytes = vertexBufferSize;
 
-		// 加载Texture
-		TexMetadata MetaData;
-		ScratchImage Image;
-		LoadFromDDSFile(L"test.DDS", DDS_FLAGS_NONE, &MetaData,Image);
-
-		{
-			D3D12_RESOURCE_DESC bufferdc = CD3DX12_RESOURCE_DESC::Tex2D(MetaData.format, MetaData.width, MetaData.height);
-			D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
-
-			// 创建上传堆
-
-			D3D12_RESOURCE_DESC Uploadbufferdc = CD3DX12_RESOURCE_DESC::Buffer(info.SizeInBytes);
-
-			ID3D12Heap* UploadHeap;
-			D3D12_HEAP_PROPERTIES UploadHeapProperties = { D3D12_HEAP_TYPE_UPLOAD };
-			D3D12_HEAP_DESC UpLoadHeapDesc = { info.SizeInBytes,UploadHeapProperties };
-			ThrowIfFailed(m_device->CreateHeap(&UpLoadHeapDesc, IID_PPV_ARGS(&UploadHeap)));
-			ThrowIfFailed(m_device->CreatePlacedResource(
-				UploadHeap,
-				0,
-				&Uploadbufferdc,
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(&m_ITextureUpload)
-			));
+		//DWORD iList[] =
+		//{
+		//	0,1,2,
+		//	0,2,3
+		//};
+		//const UINT IndexBufferSize = sizeof(iList);
+		//const UINT IndexCount = IndexBufferSize / sizeof(DWORD);
 
 
-			ID3D12Heap* pUploadHeap;
-			D3D12_HEAP_PROPERTIES DefaultHeapProperties = { D3D12_HEAP_TYPE_DEFAULT };
-			D3D12_HEAP_DESC heapdesc = { info.SizeInBytes ,DefaultHeapProperties };
-			ThrowIfFailed(m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap)));
-			// 创建缓冲
-			ID3D12Resource* pTextureResource;
-			ThrowIfFailed(m_device->CreatePlacedResource(
-				pUploadHeap,
-				0,
-				&bufferdc,
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				NULL,
-				IID_PPV_ARGS(&pTextureResource)));
+		//IndexBuffer = std::make_unique<UploadBuffer<DWORD>>(m_device.Get(), IndexCount, false);
+		////IndexBuffer->CopyDataList(0, IndexCount, iList);
+		//for (UINT i = 0; i < IndexCount; i++)
+		//{
+		//	IndexBuffer->CopyData(i, iList[i]);
+		//}
+
+		//// 初始化顶点数据
+		//m_IndexBufferView.BufferLocation = IndexBuffer->Resource()->GetGPUVirtualAddress();// m_IndexBuffer->GetGPUVirtualAddress();
+		//m_IndexBufferView.SizeInBytes = IndexBufferSize;
+		//m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+		//// 加载Texture
+		//TexMetadata MetaData;
+		//ScratchImage Image;
+		//LoadFromDDSFile(L"test.DDS", DDS_FLAGS_NONE, &MetaData,Image);
+
+		//{
+		//	D3D12_RESOURCE_DESC bufferdc = CD3DX12_RESOURCE_DESC::Tex2D(MetaData.format, MetaData.width, MetaData.height);
+		//	D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
+
+		//	// 创建上传堆
+
+		//	D3D12_RESOURCE_DESC Uploadbufferdc = CD3DX12_RESOURCE_DESC::Buffer(info.SizeInBytes);
+
+		//	ID3D12Heap* UploadHeap;
+		//	D3D12_HEAP_PROPERTIES UploadHeapProperties = { D3D12_HEAP_TYPE_UPLOAD };
+		//	D3D12_HEAP_DESC UpLoadHeapDesc = { info.SizeInBytes,UploadHeapProperties };
+		//	ThrowIfFailed(m_device->CreateHeap(&UpLoadHeapDesc, IID_PPV_ARGS(&UploadHeap)));
+		//	ThrowIfFailed(m_device->CreatePlacedResource(
+		//		UploadHeap,
+		//		0,
+		//		&Uploadbufferdc,
+		//		D3D12_RESOURCE_STATE_GENERIC_READ,
+		//		nullptr,
+		//		IID_PPV_ARGS(&m_ITextureUpload)
+		//	));
 
 
-			UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
-			UINT   nTextureRowNum = 0u;
-			UINT64 n64TextureRowSizes = 0u;
-			UINT64 n64RequiredSize = 0u;
+		//	ID3D12Heap* pUploadHeap;
+		//	D3D12_HEAP_PROPERTIES DefaultHeapProperties = { D3D12_HEAP_TYPE_DEFAULT };
+		//	D3D12_HEAP_DESC heapdesc = { info.SizeInBytes ,DefaultHeapProperties };
+		//	ThrowIfFailed(m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap)));
+		//	// 创建缓冲
+		//	ID3D12Resource* pTextureResource;
+		//	ThrowIfFailed(m_device->CreatePlacedResource(
+		//		pUploadHeap,
+		//		0,
+		//		&bufferdc,
+		//		D3D12_RESOURCE_STATE_COPY_DEST,
+		//		NULL,
+		//		IID_PPV_ARGS(&pTextureResource)));
 
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootPrint;
-			m_device->GetCopyableFootprints(&bufferdc, 0, 1, 0, &FootPrint, &nTextureRowNum, &n64TextureRowSizes, &n64RequiredSize);;
 
-			UINT8* pTexturePixel;
-			CD3DX12_RANGE TextureRange(0, 0);
-			ThrowIfFailed(m_ITextureUpload->Map(0, &TextureRange, reinterpret_cast<void**>(&pTexturePixel)));
-			memcpy(pTexturePixel, Image.GetPixels(), Image.GetPixelsSize());
-			m_ITextureUpload->Unmap(0, nullptr);
+		//	UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
+		//	UINT   nTextureRowNum = 0u;
+		//	UINT64 n64TextureRowSizes = 0u;
+		//	UINT64 n64RequiredSize = 0u;
 
-			CD3DX12_TEXTURE_COPY_LOCATION Dst(pTextureResource, 0);
-			CD3DX12_TEXTURE_COPY_LOCATION Src(m_ITextureUpload.Get(), FootPrint);
-			m_commandList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
-			
+		//	D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootPrint;
+		//	m_device->GetCopyableFootprints(&bufferdc, 0, 1, 0, &FootPrint, &nTextureRowNum, &n64TextureRowSizes, &n64RequiredSize);;
 
-			//设置一个资源屏障，同步并确认复制操作完成
-			//直接使用结构体然后调用的形式
-			D3D12_RESOURCE_BARRIER stResBar = {};
-			stResBar.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			stResBar.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			stResBar.Transition.pResource = pTextureResource;
-			stResBar.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-			stResBar.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-			stResBar.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		//	UINT8* pTexturePixel;
+		//	CD3DX12_RANGE TextureRange(0, 0);
+		//	ThrowIfFailed(m_ITextureUpload->Map(0, &TextureRange, reinterpret_cast<void**>(&pTexturePixel)));
+		//	memcpy(pTexturePixel, Image.GetPixels(), Image.GetPixelsSize());
+		//	m_ITextureUpload->Unmap(0, nullptr);
 
-			m_commandList->ResourceBarrier(1, &stResBar);
+		//	CD3DX12_TEXTURE_COPY_LOCATION Dst(pTextureResource, 0);
+		//	CD3DX12_TEXTURE_COPY_LOCATION Src(m_ITextureUpload.Get(), FootPrint);
+		//	m_commandList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
+		//	
 
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Format = bufferdc.Format;
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Texture2D.MipLevels = 1;
+		//	//设置一个资源屏障，同步并确认复制操作完成
+		//	//直接使用结构体然后调用的形式
+		//	D3D12_RESOURCE_BARRIER stResBar = {};
+		//	stResBar.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		//	stResBar.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		//	stResBar.Transition.pResource = pTextureResource;
+		//	stResBar.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		//	stResBar.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		//	stResBar.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
-			m_device->CreateShaderResourceView(pTextureResource, &srvDesc, srvHeapHandle);
-		}
-	
+		//	m_commandList->ResourceBarrier(1, &stResBar);
 
+		//	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		//	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		//	srvDesc.Format = bufferdc.Format;
+		//	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		//	srvDesc.Texture2D.MipLevels = 1;
+
+		//	m_device->CreateShaderResourceView(pTextureResource, &srvDesc, srvHeapHandle);
+		//}
 		ThrowIfFailed(m_commandList->Close());
 		ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
 		m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-		
-		
-
 	}
 
 
@@ -405,24 +311,23 @@ void D3D12HelloTriangle::LoadAssets()
 	}
 }
 
-void D3D12HelloTriangle::OnUpdate()
+void D3D12HelloTriangle::OnUpdate(const GameTimer& gt)
 {
-	ObjectConstants OC;
 
-	FXMVECTOR EyePosition = { 0.f,0.f,-5.f };
-	FXMVECTOR FocusPosition = { 0,0,0 };
-	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
-	mCamera->LookAt(EyePosition, FocusPosition, UpDirection);
-	mCamera->SetLens(20.f, .5f, 1.0f, 100.0f);
-	mCamera->SetPosition(1.f, 1.f, -5.f);
+	float x = mRandius * sinf(mPhi) * cosf(mTheta);
+	float z = mRandius * sinf(mPhi) * sinf(mTheta);
+	float y = mRandius * cosf(mPhi);
+
+	// Build the view matrix.
+	mCamera->MoveBy(mDeltaX, mDeltaY, mDeltaZ);
 	mCamera->UpdateViewMatrix();
-
-	ConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(m_device.Get(), 1, true);
+	
+	ObjectConstants OC;
 	XMStoreFloat4x4(&OC.WorldViewProj, mCamera->GetViewAndProj());
-	ConstantBuffer->CopyData(0, OC);
+	mConstantBuffer->CopyData(0, OC);
 }
 
-void D3D12HelloTriangle::OnRender()
+void D3D12HelloTriangle::OnRender(const GameTimer& gt)
 {
 	// 记录 所有命令
 	PopulateCommandList();
@@ -442,6 +347,32 @@ void D3D12HelloTriangle::OnDestroy()
 	CloseHandle(m_fenceEvent);
 }
 
+void D3D12HelloTriangle::OnMouseDown(WPARAM btnState, int x, int y)
+{
+	mLastMousePos.x = x;
+	mLastMousePos.y = y;
+}
+
+void D3D12HelloTriangle::OnMouseUp(WPARAM btnState, int x, int y)
+{
+	mDeltaX = 0.f;
+	mDeltaY = 0.f;
+	mDeltaZ = 0.f;
+}
+
+void D3D12HelloTriangle::OnMouseMove(WPARAM btnState, int x, int y)
+{
+	mDeltaX = 0.f;
+	mDeltaY = 0.f;
+	if ((btnState & MK_LBUTTON)!=0)
+	{
+		mDeltaX = 0.0015f * (x - mLastMousePos.x);
+		mDeltaY = 0.0015f * (y - mLastMousePos.y);
+	}
+	mLastMousePos.x = x;
+	mLastMousePos.y = y;
+}
+
 
 void D3D12HelloTriangle::PopulateCommandList()
 {
@@ -456,7 +387,7 @@ void D3D12HelloTriangle::PopulateCommandList()
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
 	m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
-	m_commandList->SetGraphicsRootConstantBufferView(1, ConstantBuffer->Resource()->GetGPUVirtualAddress());
+	m_commandList->SetGraphicsRootConstantBufferView(1, mConstantBuffer->Resource()->GetGPUVirtualAddress());
 	//m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
@@ -471,11 +402,11 @@ void D3D12HelloTriangle::PopulateCommandList()
 	const float clearColor[] = { 0.f,0.2f,.4f,1.f };
 	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	m_commandList->IASetIndexBuffer(&m_IndexBufferView);
-	m_commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
+	//m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	//m_commandList->IASetIndexBuffer(&m_IndexBufferView);
+	//m_commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 
-	m_commandList->IASetVertexBuffers(1, 1, &mBoxGeo->VertexBufferView());
+	m_commandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
 	m_commandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
 	m_commandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
 
@@ -508,17 +439,17 @@ void D3D12HelloTriangle::BuildFrameResources()
 
 void D3D12HelloTriangle::BuildBoxGeometry()
 {
-	std::array<Vertex1, 8> vertices =
+	std::array<Vertex, 8> vertices =
 	{
-		Vertex1({XMFLOAT3(-1.f,-1.f,-1.f),XMFLOAT4(Colors::White)}),
-		Vertex1({XMFLOAT3(-1.f,+1.f,-1.f),XMFLOAT4(Colors::Black)}),
-		Vertex1({XMFLOAT3(+1.f,+1.f,-1.f),XMFLOAT4(Colors::Red)}),
-		Vertex1({XMFLOAT3(+1.f,-1.f,-1.f),XMFLOAT4(Colors::Green)}),
+		Vertex({XMFLOAT3(-.25f,-.25f * m_aspectRatio,0.f),XMFLOAT4(Colors::White)}),
+		Vertex({XMFLOAT3(-.25f,+.25f * m_aspectRatio,0.f),XMFLOAT4(Colors::Black)}),
+		Vertex({XMFLOAT3(+.25f,+.25f * m_aspectRatio,0.f),XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+.25f,-.25f * m_aspectRatio,0.f),XMFLOAT4(Colors::Green)}),
 
-		Vertex1({XMFLOAT3(-1.f,-1.f,+1.f),XMFLOAT4(Colors::Blue)}),
-		Vertex1({XMFLOAT3(-1.f,+1.f,+1.f),XMFLOAT4(Colors::Yellow)}),
-		Vertex1({XMFLOAT3(+1.f,+1.f,+1.f),XMFLOAT4(Colors::Cyan)}),
-		Vertex1({XMFLOAT3(+1.f,-1.f,+1.f),XMFLOAT4(Colors::Magenta)}),
+		Vertex({XMFLOAT3(-.25f,-.25f * m_aspectRatio,1.f),XMFLOAT4(Colors::Blue)}),
+		Vertex({XMFLOAT3(-.25f,+.25f * m_aspectRatio,1.f),XMFLOAT4(Colors::Yellow)}),
+		Vertex({XMFLOAT3(+.25f,+.25f * m_aspectRatio,1.f),XMFLOAT4(Colors::Cyan)}),
+		Vertex({XMFLOAT3(+.25f,-.25f * m_aspectRatio,1.f),XMFLOAT4(Colors::Magenta)}),
 	};
 	std::array<std::uint16_t, 36> indices =
 	{
@@ -540,8 +471,7 @@ void D3D12HelloTriangle::BuildBoxGeometry()
 		4, 0, 3,
 		4, 3, 7
 	};
-
-	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex1);
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
 	mBoxGeo = std::make_unique<MeshGeometry>();
@@ -561,7 +491,7 @@ void D3D12HelloTriangle::BuildBoxGeometry()
 		m_commandList.Get(), indices.data(), ibByteSize,
 		mBoxGeo->IndexBufferUploader);
 
-	mBoxGeo->VertexByteStride = sizeof(Vertex1);
+	mBoxGeo->VertexByteStride = sizeof(Vertex);
 	mBoxGeo->VertexBufferByteSize = vbByteSize;
 	mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
 	mBoxGeo->IndexBufferByteSize = ibByteSize;
@@ -572,6 +502,122 @@ void D3D12HelloTriangle::BuildBoxGeometry()
 	submesh.BaseVertexLocation = 0;
 
 	mBoxGeo->DrawArgs["box"] = submesh;
+}
+
+void D3D12HelloTriangle::BuildCamera()
+{
+	FXMVECTOR EyePosition = { 0.f, 0.f, -5.f };
+	FXMVECTOR FocusPosition = { 0, 0, 0 };
+	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
+	mCamera->LookAt(EyePosition, FocusPosition, UpDirection);
+	mCamera->SetLens(20.f, .5f, 1.0f, 100.0f);
+	mCamera->SetPosition(EyePosition);
+}
+
+void D3D12HelloTriangle::BuildConstantBuffers()
+{
+	mConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(m_device.Get(), 1, true);
+	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+
+	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mConstantBuffer->Resource()->GetGPUVirtualAddress();
+	int boxCBufIndex = 0;
+	cbAddress += boxCBufIndex * objCBByteSize;
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+	cbvDesc.BufferLocation = cbAddress;
+	cbvDesc.SizeInBytes = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+}
+
+void D3D12HelloTriangle::BuildRootSignature()
+{
+	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+
+	m_device->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData));
+
+
+	CD3DX12_DESCRIPTOR_RANGE1 ranges[1];
+	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0);
+	CD3DX12_ROOT_PARAMETER1 rootParameters[2];
+	rootParameters[0].InitAsDescriptorTable(_countof(ranges), ranges, D3D12_SHADER_VISIBILITY_PIXEL);
+	rootParameters[1].InitAsConstantBufferView(0);
+
+	D3D12_STATIC_SAMPLER_DESC samplers[1] = {};
+	samplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	samplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	samplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	samplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	samplers[0].MipLODBias = 0;
+	samplers[0].MaxAnisotropy = 0;
+	samplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	samplers[0].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+	samplers[0].MinLOD = 0.f;
+	samplers[0].MaxLOD = D3D12_FLOAT32_MAX;
+	samplers[0].ShaderRegister = 0;
+	samplers[0].RegisterSpace = 0;
+	samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+	// 创建一个空的root signature
+	{
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
+		rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, _countof(samplers), samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &signature, &error));
+		m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_rootSignature));
+	}
+
+}
+
+void D3D12HelloTriangle::BuildShadersAndInputLayout()
+{
+	// 创建一个pipeline state 包含编译和加载shader
+#if defined (_DEBUG)
+	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	UINT compileFlags = 0;
+#endif
+
+	std::wstring shaderFile = GetAssetFullPath(L"shaders.hlsl");
+
+
+	mVertexShader = CompileShader(shaderFile.c_str(), nullptr, "VSMain", "vs_5_0");
+	mPixelShader = CompileShader(shaderFile.c_str(), nullptr, "PSMain", "ps_5_0");
+	//ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+	//ThrowIfFailed(D3DCompileFromFile(shaderFile.c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+
+	//定义vertex buff 输入布局方式
+	mInputLayout =
+	{
+		{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+		{"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+		//{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+	};
+
+}
+
+void D3D12HelloTriangle::BuildPSO()
+{
+	{
+		// 创建pso
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+		psoDesc.InputLayout = { mInputLayout.data() ,(UINT)(mInputLayout.size()) };
+		psoDesc.pRootSignature = m_rootSignature.Get();
+		psoDesc.VS = CD3DX12_SHADER_BYTECODE(mVertexShader.Get());
+		psoDesc.PS = CD3DX12_SHADER_BYTECODE(mPixelShader.Get());
+		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		psoDesc.DepthStencilState.DepthEnable = FALSE;
+		psoDesc.DepthStencilState.StencilEnable = FALSE;
+		psoDesc.SampleMask = UINT_MAX;
+		psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		psoDesc.NumRenderTargets = 1;
+		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		psoDesc.SampleDesc.Count = 1;
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)));
+	}
 }
 
 void D3D12HelloTriangle::UpdateObjectCBs()

@@ -11,6 +11,7 @@ using Microsoft::WRL::ComPtr;
 struct Vertex
 {
 	XMFLOAT3 position;
+	XMFLOAT4 Color;
 	XMFLOAT2 uv;
 };
 
@@ -28,9 +29,12 @@ public:
 	D3D12HelloTriangle(UINT width,UINT height,std::wstring name);
 	~D3D12HelloTriangle();
 	virtual void OnInit();
-	virtual void OnUpdate();
-	virtual void OnRender();
+	virtual void OnUpdate(const GameTimer& gt);
+	virtual void OnRender(const GameTimer& gt);
 	virtual void OnDestroy();
+	virtual void OnMouseDown(WPARAM btnState, int x, int y);
+	virtual void OnMouseUp(WPARAM btnState, int x, int y);
+	virtual void OnMouseMove(WPARAM btnState, int x, int y);
 
 
 	 template<typename ... Args>
@@ -49,6 +53,11 @@ private:
 
 	void BuildFrameResources();
 	void BuildBoxGeometry();
+	void BuildCamera();
+	void BuildConstantBuffers();
+	void BuildRootSignature();
+	void BuildShadersAndInputLayout();
+	void BuildPSO();
 
 	void UpdateObjectCBs();
 	void UpdateMainPassCB();
@@ -79,9 +88,14 @@ private:
 
 	ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
-	std::unique_ptr<UploadBuffer<ObjectConstants>> ConstantBuffer = nullptr;
+	ComPtr<ID3DBlob> mVertexShader;
+	ComPtr<ID3DBlob> mPixelShader;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+
+	std::unique_ptr<UploadBuffer<ObjectConstants>> mConstantBuffer = nullptr;
 	std::unique_ptr<UploadBuffer<Vertex>> VertexBuffer = nullptr;
 	std::unique_ptr<UploadBuffer<DWORD>> IndexBuffer = nullptr;
+
 
 	ComPtr<ID3D12Resource> m_CBVBuffer;
 	//D3D12_CONSTANT_BUFFER_VIEW_DESC
@@ -103,5 +117,16 @@ private:
 	std::vector<RenderItem*> mTransparentRitem;
 
 	std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+
+	POINT mLastMousePos;
+
+	float mTheta = 1.5f * XM_PI;
+	float mPhi = XM_PIDIV4;
+	float mRandius = 5.f;
+
+	float mDeltaX = 0.f;
+	float mDeltaY = 0.f;
+	float mDeltaZ = 0.f;
 };
+
 
