@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DXSampleHelper.h"
+#include "GameTimer.h"
 #include "Win32Application.h"
 
 class DXSample
@@ -10,9 +11,13 @@ public:
 	virtual ~DXSample();
 
 	virtual void OnInit() = 0;
-	virtual void OnUpdate() = 0;
-	virtual void OnRender() = 0;
+	virtual void OnUpdate(const GameTimer& gt) = 0;
+	virtual void OnRender(const GameTimer& gt) = 0;
 	virtual void OnDestroy() = 0;
+
+	virtual void OnMouseDown(WPARAM btnState, int x, int y) = 0;
+	virtual void OnMouseUp(WPARAM btnState, int x, int y) = 0;
+	virtual void OnMouseMove(WPARAM btnState, int x, int y) = 0;
 
 	virtual void OnKeyDown(UINT8  key){}
 	virtual void OnKeyUp(UINT8 key){}

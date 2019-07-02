@@ -11,6 +11,7 @@ using Microsoft::WRL::ComPtr;
 struct Vertex
 {
 	XMFLOAT3 position;
+	XMFLOAT4 Color;
 	XMFLOAT2 uv;
 };
 
@@ -28,9 +29,12 @@ public:
 	D3D12HelloTriangle(UINT width,UINT height,std::wstring name);
 	~D3D12HelloTriangle();
 	virtual void OnInit();
-	virtual void OnUpdate();
-	virtual void OnRender();
+	virtual void OnUpdate(const GameTimer& gt);
+	virtual void OnRender(const GameTimer& gt);
 	virtual void OnDestroy();
+	virtual void OnMouseDown(WPARAM btnState, int x, int y);
+	virtual void OnMouseUp(WPARAM btnState, int x, int y);
+	virtual void OnMouseMove(WPARAM btnState, int x, int y);
 
 
 	 template<typename ... Args>
@@ -49,6 +53,7 @@ private:
 
 	void BuildFrameResources();
 	void BuildBoxGeometry();
+	void BuildCamera();
 
 	void UpdateObjectCBs();
 	void UpdateMainPassCB();
@@ -103,5 +108,16 @@ private:
 	std::vector<RenderItem*> mTransparentRitem;
 
 	std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
+
+	POINT mLastMousePos;
+
+	float mTheta = 1.5f * XM_PI;
+	float mPhi = XM_PIDIV4;
+	float mRandius = 5.f;
+
+	float mDeltaX = 0.f;
+	float mDeltaY = 0.f;
+	float mDeltaZ = 0.f;
 };
+
 

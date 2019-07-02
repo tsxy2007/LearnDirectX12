@@ -45,9 +45,9 @@ void D3DCamera::UpdateViewMatrix()
 	R = XMVector3Cross(U, L);
 
 	// Fill in the view matrix entries.
-	float x = -XMVectorGetX(XMVector3Dot(P, R));
+	float x = XMVectorGetX(XMVector3Dot(P, R));
 	float y = -XMVectorGetX(XMVector3Dot(P, U));
-	float z = -XMVectorGetX(XMVector3Dot(P, L));
+	float z = XMVectorGetX(XMVector3Dot(P, L));
 
 	XMStoreFloat3(&mCameraRight, R);
 	XMStoreFloat3(&mCameraUp, U);
@@ -79,6 +79,18 @@ void D3DCamera::SetPosition(float X, float Y, float Z)
 	mCameraPosition.x = X;
 	mCameraPosition.y = Y;
 	mCameraPosition.z = Z;
+}
+
+void D3DCamera::SetPosition(DirectX::FXMVECTOR pos)
+{
+	XMStoreFloat3(&mCameraPosition, pos);
+}
+
+void D3DCamera::MoveBy(float X, float Y, float Z)
+{
+	mCameraPosition.x += X;
+	mCameraPosition.y += Y;
+	mCameraPosition.z += Z;
 }
 
 DirectX::XMMATRIX D3DCamera::GetView() const
