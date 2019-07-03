@@ -4,12 +4,6 @@
 #include "UploadBuffer.h"
 #include "FrameResource.h"
 
-#define MipLevel  9
-
-#define nWidth  256
-#define nHeight  206
-
-
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
 	DXSample(width,height,name),
 	m_frameIndex(0),
@@ -386,7 +380,7 @@ void D3D12HelloTriangle::PopulateCommandList()
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
+	//m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
 	m_commandList->SetGraphicsRootConstantBufferView(1, mConstantBuffer->Resource()->GetGPUVirtualAddress());
 	//m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
 	m_commandList->RSSetViewports(1, &m_viewport);
