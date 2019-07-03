@@ -4,12 +4,6 @@
 #include "UploadBuffer.h"
 #include "FrameResource.h"
 
-#define MipLevel  9
-
-#define nWidth  256
-#define nHeight  206
-
-
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
 	DXSample(width,height,name),
 	m_frameIndex(0),
@@ -34,6 +28,7 @@ void D3D12HelloTriangle::OnInit()
 		BuildShadersAndInputLayout();
 		BuildPSO();
 		BuildBoxGeometry();
+		BuildCamera();
 		LoadAssets();
 }
 
@@ -368,6 +363,14 @@ void D3D12HelloTriangle::OnMouseMove(WPARAM btnState, int x, int y)
 	{
 		mDeltaX = 0.0015f * (x - mLastMousePos.x);
 		mDeltaY = 0.0015f * (y - mLastMousePos.y);
+
+		//float dx = XMConvertToRadians(0.25f*static_cast<float>(x - mLastMousePos.x));
+		//float dy = XMConvertToRadians(0.25f*static_cast<float>(y - mLastMousePos.y));
+
+		//mTheta += dx;
+		//mPhi += dy;
+
+		//mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::PI - 0.1f);
 	}
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -386,7 +389,7 @@ void D3D12HelloTriangle::PopulateCommandList()
 	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
 	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
+	//m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
 	m_commandList->SetGraphicsRootConstantBufferView(1, mConstantBuffer->Resource()->GetGPUVirtualAddress());
 	//m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
 	m_commandList->RSSetViewports(1, &m_viewport);
@@ -506,8 +509,8 @@ void D3D12HelloTriangle::BuildBoxGeometry()
 
 void D3D12HelloTriangle::BuildCamera()
 {
-	FXMVECTOR EyePosition = { 0.f, 0.f, -5.f };
-	FXMVECTOR FocusPosition = { 0, 0, 0 };
+	FXMVECTOR EyePosition = { 0.f, 0.f, 5.f };
+	FXMVECTOR FocusPosition = { 0, 0, -1.0f };
 	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
 	mCamera->LookAt(EyePosition, FocusPosition, UpDirection);
 	mCamera->SetLens(20.f, .5f, 1.0f, 100.0f);

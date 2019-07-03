@@ -30,6 +30,8 @@ private:
 	DirectX::XMFLOAT3 mCameraDirection = { 0.f,0.f,1.f };
 	DirectX::XMFLOAT3 mCameraUp = { 0.f,1.f,0.f };
 	DirectX::XMFLOAT3 mCameraRight = { 1.f,0.f,0.f };
+	DirectX::XMFLOAT3 mCameraWorldUp = { 0.f,1.f,0.f };
+	DirectX::XMFLOAT3 mCameraFront = { 1.f,0.f,0.f };
 
 	DirectX::XMFLOAT4X4 mViewMatrix = d3dUtil::Identity4x4();
 	DirectX::XMFLOAT4X4 mPerspectiveMatrix = d3dUtil::Identity4x4();
