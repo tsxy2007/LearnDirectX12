@@ -35,12 +35,8 @@ public:
 	virtual void OnMouseDown(WPARAM btnState, int x, int y);
 	virtual void OnMouseUp(WPARAM btnState, int x, int y);
 	virtual void OnMouseMove(WPARAM btnState, int x, int y);
-
-
-	 template<typename ... Args>
-	void Print(int inLogLevel, const char* inFormat, Args ... args);
-
-	bool (*func)(...);
+	virtual void OnKeyDown(UINT8  key) override;
+	virtual void OnKeyUp(UINT8 key) override;
 
 
 private:

@@ -372,8 +372,68 @@ void D3D12HelloTriangle::OnMouseMove(WPARAM btnState, int x, int y)
 
 		//mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::PI - 0.1f);
 	}
+	else if ((btnState & MK_RBUTTON) != 0)
+	{
+
+	}
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
+}
+
+void D3D12HelloTriangle::OnKeyDown(UINT8 key)
+{
+	float CameraSpeed = 0.001f;
+	switch (key)
+	{
+	case 'w':
+	case 'W':
+	{
+		mDeltaZ = -CameraSpeed;
+	}
+	break;
+	case 's':
+	case 'S':
+	{
+		mDeltaZ = CameraSpeed;
+	}
+	break;
+	case 'a':
+	case 'A':
+	{
+		mDeltaX = -CameraSpeed;
+	}
+	break;
+	case 'd':
+	case 'D':
+	{
+		mDeltaX = CameraSpeed;
+	}
+	break;
+	default:
+		break;
+	}
+}
+
+void D3D12HelloTriangle::OnKeyUp(UINT8 key)
+{
+	switch (key)
+	{
+	case 'w':
+	case 'W':
+	case 's':
+	case 'S':
+		mDeltaZ = 0.f;
+		break;
+	case 'a':
+	case 'A':
+	case 'd':
+	case 'D':
+		mDeltaX = 0.f;
+		break;
+
+	default:
+		break;
+	}
 }
 
 

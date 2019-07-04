@@ -37,10 +37,10 @@ void D3DCamera::UpdateViewMatrix()
 	XMVECTOR U = XMLoadFloat3(&mCameraUp);
 	XMVECTOR L = XMLoadFloat3(&mCameraDirection);
 	XMVECTOR vCameraPos = XMLoadFloat3(&mCameraPosition);
-	XMVECTOR vCameraFront = XMLoadFloat3(&mCameraFront);
-	XMVECTOR vCameraWorldUp = XMLoadFloat3(&mCameraWorldUp);
+	XMVECTOR vCameraFront = XMVector3Normalize(XMLoadFloat3(&mCameraFront));
+	XMVECTOR vCameraWorldUp = XMVector3Normalize(XMLoadFloat3(&mCameraWorldUp));
 
-	XMMATRIX view = DirectX::XMMatrixLookAtLH(vCameraPos, vCameraPos+ vCameraFront, vCameraWorldUp);
+	XMMATRIX view = DirectX::XMMatrixLookToLH(vCameraPos, vCameraFront, vCameraWorldUp);
 	XMStoreFloat4x4(&mViewMatrix,
 		view);
 
@@ -81,3 +81,9 @@ DirectX::XMMATRIX D3DCamera::GetViewAndProj() const
 	XMStoreFloat4x4( &Matrix, GetView()* GetProj());
 	return XMLoadFloat4x4(&Matrix);
 }
+
+DirectX::XMVECTOR D3DCamera::GetCameraForward() const
+{
+	return XMLoadFloat3(&mCameraFront);
+}
+

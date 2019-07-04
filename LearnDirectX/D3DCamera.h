@@ -25,6 +25,11 @@ public:
 
 	DirectX::XMMATRIX GetViewAndProj() const;
 
+	DirectX::XMVECTOR GetCameraForward() const;
+
+	DirectX::XMVECTOR GetCameraPos()const { return XMLoadFloat3 (&mCameraPosition); }
+
+
 private:
 	DirectX::XMFLOAT3 mCameraPosition = { 0.f,0.f,0.f };
 	DirectX::XMFLOAT3 mCameraDirection = { 0.f,0.f,1.f };
