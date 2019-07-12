@@ -48,6 +48,9 @@
     <ClInclude Include="MathHelper.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="GeometryGenrator.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -78,6 +81,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="MathHelper.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="GeometryGenrator.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
