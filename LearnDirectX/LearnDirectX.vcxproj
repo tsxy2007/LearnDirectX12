@@ -28,7 +28,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v141</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -71,8 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.17763.0\shared;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.17763.0\um</IncludePath>
-    <LibraryPath>C:\Program Files %28x86%29\Windows Kits\10\Lib\10.0.17763.0\um\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\shared;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\um;C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\include\;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt\;C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\winrt\</IncludePath>
+    <LibraryPath>C:\Program Files (x86)\Windows Kits\10\Lib\10.0.17763.0\um\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LibraryPath>E:\Projects\LearnDirectX12\Libs;D:\Projects\LearnDirectX12\Libs;$(LibraryPath)</LibraryPath>
@@ -96,6 +96,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalOptions>-wrap %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_ENABLE_EXTENDED_ALIGNED_STORAGE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;DirectXTex.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -137,10 +138,12 @@
     <ClInclude Include="DirectXTex.h" />
     <ClInclude Include="DXSample.h" />
     <ClInclude Include="DXSampleHelper.h" />
+    <ClInclude Include="ErrorLogger.h" />
     <ClInclude Include="FrameResource.h" />
     <ClInclude Include="GeometryGenrator.h" />
     <ClInclude Include="MathHelper.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StringConverter.h" />
     <ClInclude Include="UploadBuffer.h" />
     <ClInclude Include="Win32Application.h" />
   </ItemGroup>
@@ -149,11 +152,13 @@
     <ClCompile Include="D3DCamera.cpp" />
     <ClCompile Include="D3DUtil.cpp" />
     <ClCompile Include="DXSample.cpp" />
+    <ClCompile Include="ErrorLogger.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="GameTimer.cpp" />
     <ClCompile Include="GeometryGenrator.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MathHelper.cpp" />
+    <ClCompile Include="StringConverter.cpp" />
     <ClCompile Include="UploadBuffer.cpp" />
     <ClCompile Include="Win32Application.cpp" />
   </ItemGroup>

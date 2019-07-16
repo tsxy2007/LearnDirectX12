@@ -3,87 +3,196 @@ using namespace DirectX;
 
 D3DCamera::D3DCamera()
 {
+	this->mPosFloat3 = { 0.f,0.f,0.f };
+	this->mPosVector = XMLoadFloat3(&this->mPosFloat3);
+	this->mRotFloat3 = { 0.f,0.f,0.f };
+	this->mRotVector = XMLoadFloat3(&this->mRotFloat3);
+	this->UpdateViewMatrix();
 }
 
 D3DCamera::~D3DCamera()
 {
 }
 
-void D3DCamera::LookAt(FXMVECTOR pos, FXMVECTOR target,FXMVECTOR worldUp)
+void D3DCamera::SetProjectionValues(float fovDegrees, float aspectRatio, float nearZ, float farZ)
 {
-	XMVECTOR L = XMVector3Normalize(XMVectorSubtract(target, pos));
-	XMVECTOR R = XMVector3Normalize(XMVector3Cross(worldUp, L));
-	XMVECTOR U = XMVector3Cross(L, R);
-
-	XMStoreFloat3(&mCameraPosition, pos);
-	XMStoreFloat3(&mCameraDirection, L);
-	XMStoreFloat3(&mCameraRight, R);
-	XMStoreFloat3(&mCameraUp, U);
-	XMStoreFloat3(&mCameraWorldUp, worldUp);
-	XMStoreFloat3(&mCameraFront, target);
+	float fovRadians = (fovDegrees / 360.0f) * XM_2PI;
+	this->mProjectionMatrix = XMMatrixPerspectiveFovLH(fovRadians, aspectRatio, nearZ, farZ);
 }
 
-void D3DCamera::SetLens(float FovAngleY, float AspectRatio, float NearZ, float FarZ)
+const XMMATRIX & D3DCamera::GetViewMatrix() const
 {
-	XMMATRIX mMatrix = XMMatrixPerspectiveFovLH(FovAngleY, AspectRatio, NearZ, FarZ);
-	XMStoreFloat4x4(&mPerspectiveMatrix, mMatrix);
+	// TODO: 在此处插入 return 语句
+	return this->mViewMatrix;
+}
+
+const XMMATRIX & D3DCamera::GetProjectionMatrix() const
+{
+	// TODO: 在此处插入 return 语句
+	return this->mProjectionMatrix;
+}
+
+const XMMATRIX & D3DCamera::GetViewAndProj() const
+{
+	// TODO: 在此处插入 return 语句
+	return this->mViewMatrix * this->mProjectionMatrix;
+}
+
+const XMVECTOR & D3DCamera::GetPostionVector() const
+{
+	// TODO: 在此处插入 return 语句
+	return this->mPosVector;
+}
+
+const XMFLOAT3 & D3DCamera::GetPostionFloat3() const
+{
+	// TODO: 在此处插入 return 语句
+	return this->mPosFloat3;
+}
+
+const XMVECTOR & D3DCamera::GetRotationVector() const
+{
+	// TODO: 在此处插入 return 语句
+	return this->mRotVector;
+}
+
+const XMFLOAT3 & D3DCamera::GetRotationFloat3() const
+{
+	// TODO: 在此处插入 return 语句
+	return this->mRotFloat3;
+}
+
+const XMVECTOR & D3DCamera::GetForwardVector()
+{
+	// TODO: 在此处插入 return 语句
+	return vec_forward;
+}
+
+const XMVECTOR & D3DCamera::GetBackVector()
+{
+	// TODO: 在此处插入 return 语句
+	return vec_back;
+}
+
+const XMVECTOR & D3DCamera::GetRightVector()
+{
+	// TODO: 在此处插入 return 语句
+	return vec_right;
+}
+
+const XMVECTOR & D3DCamera::GetLeftVector()
+{
+	// TODO: 在此处插入 return 语句
+	return vec_left;
+}
+
+void D3DCamera::SetPosition(const XMVECTOR & pos)
+{
+	this->mPosVector = pos;
+	XMStoreFloat3(&this->mPosFloat3, pos);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::SetPosition(float x, float y, float z)
+{
+	this->mPosFloat3.x = x;
+	this->mPosFloat3.y = y;
+	this->mPosFloat3.z = z;
+	this->mPosVector = XMLoadFloat3(&this->mPosFloat3);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::MoveBy(const XMVECTOR & pos)
+{
+	this->mPosVector += pos;
+	XMStoreFloat3(&this->mPosFloat3, pos);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::MoveBy(float x, float y, float z)
+{
+	this->mPosFloat3.x += x;
+	this->mPosFloat3.y += y;
+	this->mPosFloat3.z += z;
+	this->mPosVector = XMLoadFloat3(&this->mPosFloat3);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::SetRotation(const XMVECTOR & rot)
+{
+	this->mRotVector = rot;
+	XMStoreFloat3(&this->mRotFloat3, rot);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::SetRotation(float x, float y, float z)
+{
+	this->mRotFloat3.x = x;
+	this->mRotFloat3.y = y;
+	this->mRotFloat3.z = z;
+	this->mRotVector = XMLoadFloat3(&this->mRotFloat3);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::RotationBy(const XMVECTOR & rot)
+{
+	this->mRotVector += rot;
+	XMStoreFloat3(&this->mRotFloat3, rot);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::RotationBy(float x, float y, float z)
+{
+	this->mRotFloat3.x += x;
+	this->mRotFloat3.y += y;
+	this->mRotFloat3.z += z;
+	this->mRotVector = XMLoadFloat3(&this->mRotFloat3);
+	UpdateViewMatrix();
+}
+
+void D3DCamera::SetLookAtPos(XMFLOAT3 LookAtPos)
+{
+	if (LookAtPos.x == this->mPosFloat3.x && LookAtPos.y == this->mPosFloat3.y && LookAtPos.z == this->mPosFloat3.z)
+	{
+		return;
+	}
+	LookAtPos.x = this->mPosFloat3.x - LookAtPos.x;
+	LookAtPos.y = this->mPosFloat3.y - LookAtPos.y;
+	LookAtPos.z = this->mPosFloat3.z - LookAtPos.z;
+	float pitch = 0.f;
+	if (LookAtPos.y != 0.f)
+	{
+		const float distance = sqrt(LookAtPos.x * LookAtPos.x + LookAtPos.z  *LookAtPos.z);
+		pitch = atan(LookAtPos.y / distance);
+	}
+
+	float yaw = 0.f;
+	if (LookAtPos.x != 0.f)
+	{
+		yaw = atan(LookAtPos.x / LookAtPos.z);
+	}
+	if (LookAtPos.z > 0)
+	{
+		yaw += XM_PI;
+	}
+	this->SetRotation(pitch, yaw, 0.f);
 }
 
 void D3DCamera::UpdateViewMatrix()
 {
+	XMMATRIX RotMatrix = DirectX::XMMatrixRotationRollPitchYawFromVector(mRotVector);
+	XMMATRIX PosMatrix = XMMatrixTranslationFromVector(mPosVector);
+	//XMMatrixScalingFromVector()
+	XMVECTOR CameraTarget = DirectX::XMVector3TransformCoord(this->DEFAULT_FORWARD_VECTOR,  RotMatrix * PosMatrix);
+	XMVECTOR CameraUp = DirectX::XMVector3TransformCoord(this->DEFAULT_UP_VECTOR,RotMatrix);
+	//CameraTarget += this->mPosVector;
 
-	
-	XMVECTOR R = XMLoadFloat3(&mCameraRight);
-	XMVECTOR U = XMLoadFloat3(&mCameraUp);
-	XMVECTOR L = XMLoadFloat3(&mCameraDirection);
-	XMVECTOR vCameraPos = XMLoadFloat3(&mCameraPosition);
-	XMVECTOR vCameraFront = XMVector3Normalize(XMLoadFloat3(&mCameraFront));
-	XMVECTOR vCameraWorldUp = XMVector3Normalize(XMLoadFloat3(&mCameraWorldUp));
+	this->mViewMatrix = DirectX::XMMatrixLookAtLH(this->mPosVector, CameraTarget, CameraUp);
 
-	XMMATRIX view = DirectX::XMMatrixLookToLH(vCameraPos, vCameraFront, vCameraWorldUp);
-	XMStoreFloat4x4(&mViewMatrix,
-		view);
-
-}
-
-void D3DCamera::SetPosition(float X, float Y, float Z)
-{
-	mCameraPosition.x = X;
-	mCameraPosition.y = Y;
-	mCameraPosition.z = Z;
-}
-
-void D3DCamera::SetPosition(DirectX::FXMVECTOR pos)
-{
-	XMStoreFloat3(&mCameraPosition, pos);
-}
-
-void D3DCamera::MoveBy(float X, float Y, float Z)
-{
-	mCameraPosition.x += X;
-	mCameraPosition.y += Y;
-	mCameraPosition.z += Z;
-}
-
-DirectX::XMMATRIX D3DCamera::GetView() const
-{
-	return XMLoadFloat4x4(&mViewMatrix);
-}
-
-DirectX::XMMATRIX D3DCamera::GetProj() const
-{
-	return XMLoadFloat4x4(&mPerspectiveMatrix);
-}
-
-DirectX::XMMATRIX D3DCamera::GetViewAndProj() const
-{
-	DirectX::XMFLOAT4X4 Matrix;
-	XMStoreFloat4x4( &Matrix, GetView()* GetProj());
-	return XMLoadFloat4x4(&Matrix);
-}
-
-DirectX::XMVECTOR D3DCamera::GetCameraForward() const
-{
-	return XMLoadFloat3(&mCameraFront);
+	XMMATRIX Matrix = DirectX::XMMatrixRotationRollPitchYaw(0.f, mRotFloat3.y, 0.f);
+	this->vec_forward = DirectX::XMVector3TransformCoord(this->DEFAULT_FORWARD_VECTOR, Matrix);
+	this->vec_back = DirectX::XMVector3TransformCoord(this->DEFAULT_BACK_VECTOR, Matrix);
+	this->vec_left = DirectX::XMVector3TransformCoord(this->DEFAULT_LEFT_VECTOR, Matrix);
+	this->vec_right = DirectX::XMVector3TransformCoord(this->DEFAULT_RIGHT_VECTOR, Matrix);
 }
 
