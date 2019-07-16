@@ -1,43 +1,59 @@
 #pragma once
 #include "stdafx.h"
-
+using namespace DirectX;
 class D3DCamera
 {
 public:
 	D3DCamera();
 	~D3DCamera();
 
-	void LookAt(DirectX::FXMVECTOR pos, DirectX::FXMVECTOR target, DirectX::FXMVECTOR worldUp);
+	void SetProjectionValues(float fovDegrees, float aspectRatio, float nearZ, float farZ);
 
-	void SetLens(float FovAngleY,float AspectRatio,float NearZ,float FarZ);
+	const XMMATRIX& GetViewMatrix()const;
+	const XMMATRIX& GetProjectionMatrix()const;
+	const XMMATRIX& GetViewAndProj()const;
 
-	void UpdateViewMatrix();
 
-	void SetPosition(float X, float Y, float Z);
+	const XMVECTOR& GetPostionVector()const;
+	const XMFLOAT3& GetPostionFloat3()const;
+	const XMVECTOR& GetRotationVector()const;
+	const XMFLOAT3& GetRotationFloat3()const;
 
-	void SetPosition(DirectX::FXMVECTOR pos);
+	const XMVECTOR& GetForwardVector();
+	const XMVECTOR& GetBackVector();
+	const XMVECTOR& GetRightVector();
+	const XMVECTOR& GetLeftVector();
 
-	void MoveBy(float X = 0.f, float Y = 0.f, float Z = 0.f);
+	void SetPosition(const XMVECTOR& pos);
+	void SetPosition(float x, float y, float z);
+	void MoveBy(const XMVECTOR& pos);
+	void MoveBy(float x, float y, float z);
 
-	DirectX::XMMATRIX GetView() const;
+	void SetRotation(const XMVECTOR& pos);
+	void SetRotation(float x, float y, float z);
+	void RotationBy(const XMVECTOR& pos);
+	void RotationBy(float x, float y, float z);
 
-	DirectX::XMMATRIX GetProj() const;
-
-	DirectX::XMMATRIX GetViewAndProj() const;
-
-	DirectX::XMVECTOR GetCameraForward() const;
-
-	DirectX::XMVECTOR GetCameraPos()const { return XMLoadFloat3 (&mCameraPosition); }
-
+	void SetLookAtPos(XMFLOAT3 LookAtPos);
 
 private:
-	DirectX::XMFLOAT3 mCameraPosition = { 0.f,0.f,0.f };
-	DirectX::XMFLOAT3 mCameraDirection = { 0.f,0.f,1.f };
-	DirectX::XMFLOAT3 mCameraUp = { 0.f,1.f,0.f };
-	DirectX::XMFLOAT3 mCameraRight = { 1.f,0.f,0.f };
-	DirectX::XMFLOAT3 mCameraWorldUp = { 0.f,1.f,0.f };
-	DirectX::XMFLOAT3 mCameraFront = { 1.f,0.f,0.f };
+	void UpdateViewMatrix();
+	DirectX::XMVECTOR mPosVector;
+	DirectX::XMFLOAT3 mPosFloat3;
+	DirectX::XMVECTOR mRotVector;
+	DirectX::XMFLOAT3 mRotFloat3;
+	DirectX::XMMATRIX mViewMatrix;
+	DirectX::XMMATRIX mProjectionMatrix;
 
-	DirectX::XMFLOAT4X4 mViewMatrix = d3dUtil::Identity4x4();
-	DirectX::XMFLOAT4X4 mPerspectiveMatrix = d3dUtil::Identity4x4();
+	const XMVECTOR DEFAULT_FORWARD_VECTOR = XMVectorSet(0.f, 0.f, 1.f, 0.f);
+	const XMVECTOR DEFAULT_UP_VECTOR = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	const XMVECTOR DEFAULT_RIGHT_VECTOR = XMVectorSet(1.f, 0.f, 0.f, 0.f);
+	const XMVECTOR DEFAULT_BACK_VECTOR = XMVectorSet(0.f, 0.f, -1.f, 0.f);
+	const XMVECTOR DEFAULT_LEFT_VECTOR = XMVectorSet(-1.f, 0.f, 0.f, 0.f);
+	const XMVECTOR DEFAULT_DOWN_VECTOR = XMVectorSet(0.f, 0.f, -1.f, 0.f);
+
+	XMVECTOR vec_forward;
+	XMVECTOR vec_left;
+	XMVECTOR vec_right;
+	XMVECTOR vec_back;
 };

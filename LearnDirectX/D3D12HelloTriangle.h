@@ -54,6 +54,7 @@ private:
 	void BuildRootSignature();
 	void BuildShadersAndInputLayout();
 	void BuildPSO();
+	void BuildShapeGeometry();
 
 	void UpdateObjectCBs();
 	void UpdateMainPassCB();

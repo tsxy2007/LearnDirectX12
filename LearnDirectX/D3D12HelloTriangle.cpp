@@ -1,8 +1,9 @@
 #include "stdafx.h"
-#include "D3DCamera.h"
 #include "D3D12HelloTriangle.h"
 #include "UploadBuffer.h"
 #include "FrameResource.h"
+#include "GeometryGenrator.h"
+#include "D3DCamera.h"
 
 D3D12HelloTriangle::D3D12HelloTriangle(UINT width, UINT height, std::wstring name) :
 	DXSample(width,height,name),
@@ -314,11 +315,9 @@ void D3D12HelloTriangle::OnUpdate(const GameTimer& gt)
 	float y = mRandius * cosf(mPhi);
 
 	// Build the view matrix.
-	mCamera->MoveBy(mDeltaX, mDeltaY, mDeltaZ);
-	mCamera->UpdateViewMatrix();
-	
+	XMMATRIX WorldMatrix = XMMatrixIdentity();
 	ObjectConstants OC;
-	XMStoreFloat4x4(&OC.WorldViewProj, mCamera->GetViewAndProj());
+	XMStoreFloat4x4(&OC.WorldViewProj, WorldMatrix * mCamera->GetViewAndProj());
 	mConstantBuffer->CopyData(0, OC);
 }
 
@@ -359,22 +358,11 @@ void D3D12HelloTriangle::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	mDeltaX = 0.f;
 	mDeltaY = 0.f;
-	if ((btnState & MK_LBUTTON)!=0)
+	if ((btnState & MK_RBUTTON) != 0)
 	{
-		mDeltaX = 0.0015f * (x - mLastMousePos.x);
-		mDeltaY = 0.0015f * (y - mLastMousePos.y);
-
-		//float dx = XMConvertToRadians(0.25f*static_cast<float>(x - mLastMousePos.x));
-		//float dy = XMConvertToRadians(0.25f*static_cast<float>(y - mLastMousePos.y));
-
-		//mTheta += dx;
-		//mPhi += dy;
-
-		//mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::PI - 0.1f);
-	}
-	else if ((btnState & MK_RBUTTON) != 0)
-	{
-
+		mDeltaX = 0.01f * (x - mLastMousePos.x);
+		mDeltaY = 0.01f * (y - mLastMousePos.y);
+		mCamera->RotationBy(mDeltaY, mDeltaX, 0);
 	}
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -382,31 +370,31 @@ void D3D12HelloTriangle::OnMouseMove(WPARAM btnState, int x, int y)
 
 void D3D12HelloTriangle::OnKeyDown(UINT8 key)
 {
-	float CameraSpeed = 0.001f;
+	float CameraSpeed = 0.01f;
 	switch (key)
 	{
 	case 'w':
 	case 'W':
 	{
-		mDeltaZ = -CameraSpeed;
+		mCamera->MoveBy(mCamera->GetForwardVector()*CameraSpeed);
 	}
 	break;
 	case 's':
 	case 'S':
 	{
-		mDeltaZ = CameraSpeed;
+		mCamera->MoveBy(mCamera->GetBackVector()*CameraSpeed);
 	}
 	break;
 	case 'a':
 	case 'A':
 	{
-		mDeltaX = -CameraSpeed;
+		mCamera->MoveBy(mCamera->GetLeftVector()*CameraSpeed);
 	}
 	break;
 	case 'd':
 	case 'D':
 	{
-		mDeltaX = CameraSpeed;
+		mCamera->MoveBy(mCamera->GetRightVector()*CameraSpeed);
 	}
 	break;
 	default:
@@ -569,12 +557,12 @@ void D3D12HelloTriangle::BuildBoxGeometry()
 
 void D3D12HelloTriangle::BuildCamera()
 {
-	FXMVECTOR EyePosition = { 0.f, 0.f, 5.f };
+	FXMVECTOR EyePosition = { 0.f, 0.f, -2.f };
 	FXMVECTOR FocusPosition = { 0, 0, -1.0f };
 	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
-	mCamera->LookAt(EyePosition, FocusPosition, UpDirection);
-	mCamera->SetLens(20.f, .5f, 1.0f, 100.0f);
 	mCamera->SetPosition(EyePosition);
+	mCamera->SetProjectionValues(120.f, m_width / m_height, 0.1f, 1000.0f);
+	mCamera->SetLookAtPos(XMFLOAT3(0.f, 0.f, 0.f));
 }
 
 void D3D12HelloTriangle::BuildConstantBuffers()
@@ -683,6 +671,13 @@ void D3D12HelloTriangle::BuildPSO()
 	}
 }
 
+void D3D12HelloTriangle::BuildShapeGeometry()
+{
+	GeometryGenerator geoGen;
+	GeometryGenerator::MeshData box = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
+	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(20.f, 30.f, 60);
+}
+
 void D3D12HelloTriangle::UpdateObjectCBs()
 {
 	auto currentObjectCB = mCurrentFrameResource->ObjectCB.get();
@@ -701,10 +696,6 @@ void D3D12HelloTriangle::UpdateObjectCBs()
 
 void D3D12HelloTriangle::UpdateMainPassCB()
 { 
-	XMMATRIX view = mCamera->GetView();
-	XMMATRIX proj = mCamera->GetProj();
-	
-	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
-	//XMMATRIX invView = 
+
 }
 

@@ -51,6 +51,12 @@
     <ClInclude Include="GeometryGenrator.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="StringConverter.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ErrorLogger.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -84,6 +90,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="GeometryGenrator.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="StringConverter.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="ErrorLogger.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
