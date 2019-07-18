@@ -55,6 +55,8 @@ private:
 	void BuildShadersAndInputLayout();
 	void BuildPSO();
 	void BuildShapeGeometry();
+	void BuildRenderItems();
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
 	void UpdateObjectCBs();
 	void UpdateMainPassCB();
@@ -115,6 +117,9 @@ private:
 
 	std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
 
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
+	UINT mPassCbvOffset = 0;
+
 	POINT mLastMousePos;
 
 	float mTheta = 1.5f * XM_PI;
@@ -124,6 +129,8 @@ private:
 	float mDeltaX = 0.f;
 	float mDeltaY = 0.f;
 	float mDeltaZ = 0.f;
+
+	UINT mCbvSrvUavDescriptorSize = 0;
 };
 
 

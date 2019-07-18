@@ -34,6 +34,12 @@ public:
 	void RotationBy(const XMVECTOR& pos);
 	void RotationBy(float x, float y, float z);
 
+
+	void SetScale(const XMVECTOR& InScale) {};
+	void SetScale(float x, float y, float z) {};
+	void ScaleBy(const XMVECTOR& pos) {};
+	void ScaleBy(float x, float y, float z) {};
+
 	void SetLookAtPos(XMFLOAT3 LookAtPos);
 
 private:
@@ -42,6 +48,8 @@ private:
 	DirectX::XMFLOAT3 mPosFloat3;
 	DirectX::XMVECTOR mRotVector;
 	DirectX::XMFLOAT3 mRotFloat3;
+	DirectX::XMFLOAT3 mScaleFloat3;
+	DirectX::XMVECTOR mScaleVector;
 	DirectX::XMMATRIX mViewMatrix;
 	DirectX::XMMATRIX mProjectionMatrix;
 

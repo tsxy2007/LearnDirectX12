@@ -7,6 +7,8 @@ D3DCamera::D3DCamera()
 	this->mPosVector = XMLoadFloat3(&this->mPosFloat3);
 	this->mRotFloat3 = { 0.f,0.f,0.f };
 	this->mRotVector = XMLoadFloat3(&this->mRotFloat3);
+	this->mScaleFloat3 = { 1.f,1.f,1.f };
+	this->mScaleVector = XMLoadFloat3(&this->mScaleFloat3);
 	this->UpdateViewMatrix();
 }
 
@@ -182,14 +184,16 @@ void D3DCamera::UpdateViewMatrix()
 {
 	XMMATRIX RotMatrix = DirectX::XMMatrixRotationRollPitchYawFromVector(mRotVector);
 	XMMATRIX PosMatrix = XMMatrixTranslationFromVector(mPosVector);
+	XMMATRIX ScaleMatrix = XMMatrixScalingFromVector(mScaleVector);
+	XMMATRIX TransformMatrix = ScaleMatrix * RotMatrix* PosMatrix;
 	//XMMatrixScalingFromVector()
-	XMVECTOR CameraTarget = DirectX::XMVector3TransformCoord(this->DEFAULT_FORWARD_VECTOR,  RotMatrix * PosMatrix);
+	XMVECTOR CameraTarget = DirectX::XMVector3TransformCoord(this->DEFAULT_FORWARD_VECTOR, TransformMatrix);
 	XMVECTOR CameraUp = DirectX::XMVector3TransformCoord(this->DEFAULT_UP_VECTOR,RotMatrix);
 	//CameraTarget += this->mPosVector;
 
 	this->mViewMatrix = DirectX::XMMatrixLookAtLH(this->mPosVector, CameraTarget, CameraUp);
 
-	XMMATRIX Matrix = DirectX::XMMatrixRotationRollPitchYaw(0.f, mRotFloat3.y, 0.f);
+	XMMATRIX Matrix = DirectX::XMMatrixRotationRollPitchYaw(mRotFloat3.x, mRotFloat3.y, 0.f);
 	this->vec_forward = DirectX::XMVector3TransformCoord(this->DEFAULT_FORWARD_VECTOR, Matrix);
 	this->vec_back = DirectX::XMVector3TransformCoord(this->DEFAULT_BACK_VECTOR, Matrix);
 	this->vec_left = DirectX::XMVector3TransformCoord(this->DEFAULT_LEFT_VECTOR, Matrix);

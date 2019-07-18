@@ -23,13 +23,16 @@ D3D12HelloTriangle::~D3D12HelloTriangle()
 void D3D12HelloTriangle::OnInit()
 {
 		LoadPipeline();
-		BuildDescriptorHeaps();
-		BuildConstantBuffers();
 		BuildRootSignature();
 		BuildShadersAndInputLayout();
 		BuildPSO();
 		BuildBoxGeometry();
 		BuildCamera();
+		BuildShapeGeometry();
+		BuildRenderItems();
+		BuildFrameResources();
+		BuildDescriptorHeaps();
+		BuildConstantBuffers();
 		LoadAssets();
 }
 
@@ -99,6 +102,7 @@ void D3D12HelloTriangle::LoadPipeline()
 			&swapChain
 		)
 	); 
+	mCbvSrvUavDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	ThrowIfFailed(factory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER));
 	
@@ -146,8 +150,14 @@ void D3D12HelloTriangle::LoadPipeline()
 
 void D3D12HelloTriangle::BuildDescriptorHeaps()
 {
+	UINT objCount = (UINT)mOpaqueRitem.size();
+
+	UINT numDescriptors = (objCount + 1)*gNumFrameResources;
+
+	mPassCbvOffset = objCount * gNumFrameResources;
+
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-	cbvHeapDesc.NumDescriptors = 1;
+	cbvHeapDesc.NumDescriptors = numDescriptors;
 	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvHeapDesc.NodeMask = 0;
@@ -315,14 +325,17 @@ void D3D12HelloTriangle::OnUpdate(const GameTimer& gt)
 	float y = mRandius * cosf(mPhi);
 
 	// Build the view matrix.
-	XMMATRIX WorldMatrix = XMMatrixIdentity();
-	ObjectConstants OC;
-	XMStoreFloat4x4(&OC.WorldViewProj, WorldMatrix * mCamera->GetViewAndProj());
-	mConstantBuffer->CopyData(0, OC);
+	//XMMATRIX WorldMatrix = XMMatrixIdentity();
+	//ObjectConstants OC;
+	//XMStoreFloat4x4(&OC.WorldViewProj, WorldMatrix * mCamera->GetViewMatrix() * mCamera->GetProjectionMatrix());
+	//mConstantBuffer->CopyData(0, OC);
 }
 
 void D3D12HelloTriangle::OnRender(const GameTimer& gt)
 {
+	mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % gNumFrameResources;
+	mCurrentFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
+
 	// 记录 所有命令
 	PopulateCommandList();
 
@@ -330,9 +343,12 @@ void D3D12HelloTriangle::OnRender(const GameTimer& gt)
 	ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
 	m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
-	// 推送
-	ThrowIfFailed(m_swapChain->Present(1, 0));
-	WaitForPreviousFrame();
+	if (mCurrentFrameResource->Fence != 0 && m_fence->GetCompletedValue() < mCurrentFrameResource->Fence)
+	{
+		// 推送
+		ThrowIfFailed(m_swapChain->Present(1, 0));
+		WaitForPreviousFrame();
+	}
 }
 
 void D3D12HelloTriangle::OnDestroy()
@@ -427,44 +443,53 @@ void D3D12HelloTriangle::OnKeyUp(UINT8 key)
 
 void D3D12HelloTriangle::PopulateCommandList()
 {
+	m_commandAllocator = mCurrentFrameResource->CmdListAlloc;
 	ThrowIfFailed(m_commandAllocator->Reset());
 	ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
 
-	//Set necessary state
-	m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
-
-
-	ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
-	m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-
-	//m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
-	m_commandList->SetGraphicsRootConstantBufferView(1, mConstantBuffer->Resource()->GetGPUVirtualAddress());
-	//m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
 	m_commandList->RSSetViewports(1, &m_viewport);
 	m_commandList->RSSetScissorRects(1, &m_scissorRect);
+	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-	// 投射viewtarget
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
-	m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
-	
-	// Record commands
-	const float clearColor[] = { 0.f,0.2f,.4f,1.f };
-	m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-	m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	//m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-	//m_commandList->IASetIndexBuffer(&m_IndexBufferView);
-	//m_commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
 
-	m_commandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
-	m_commandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
-	m_commandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
+	//Set necessary state
+	//m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
 
-	// Indicate
-	m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
-	ThrowIfFailed(m_commandList->Close());
+	//ID3D12DescriptorHeap* ppHeaps[] = { m_srvHeap.Get() };
+	//m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
+
+	////m_commandList->SetGraphicsRootDescriptorTable(0, m_srvHeap->GetGPUDescriptorHandleForHeapStart());
+	////m_commandList->SetGraphicsRootConstantBufferView(1, mConstantBuffer->Resource()->GetGPUVirtualAddress());
+	////m_commandList->SetGraphicsRootConstantBufferView(1, m_CBVBuffer->GetGPUVirtualAddress());
+	//m_commandList->RSSetViewports(1, &m_viewport);
+	//m_commandList->RSSetScissorRects(1, &m_scissorRect);
+
+	//// 投射viewtarget
+	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	//CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
+	//m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+	//
+	//// Record commands
+	//const float clearColor[] = { 0.f,0.2f,.4f,1.f };
+	////m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+	////m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//////m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+	//////m_commandList->IASetIndexBuffer(&m_IndexBufferView);
+	//////m_commandList->DrawIndexedInstanced(6, 1, 0, 0,0);
+
+	////m_commandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
+	////m_commandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
+	////m_commandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
+	//DrawRenderItems(m_commandList.Get(), mOpaqueRitem);
+
+	//// Indicate
+	//m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+	//ThrowIfFailed(m_commandList->Close());
 }
 
 void D3D12HelloTriangle::WaitForPreviousFrame()
@@ -557,17 +582,46 @@ void D3D12HelloTriangle::BuildBoxGeometry()
 
 void D3D12HelloTriangle::BuildCamera()
 {
-	FXMVECTOR EyePosition = { 0.f, 0.f, -2.f };
+	FXMVECTOR EyePosition = { 0.f, 0.f, -1.f };
 	FXMVECTOR FocusPosition = { 0, 0, -1.0f };
 	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
 	mCamera->SetPosition(EyePosition);
-	mCamera->SetProjectionValues(120.f, m_width / m_height, 0.1f, 1000.0f);
+	mCamera->SetProjectionValues(90.f, m_width / m_height, 0.0001f, 10.0f);
 	mCamera->SetLookAtPos(XMFLOAT3(0.f, 0.f, 0.f));
 }
 
 void D3D12HelloTriangle::BuildConstantBuffers()
 {
-	mConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(m_device.Get(), 1, true);
+	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+
+	UINT objCount = (UINT)mOpaqueRitem.size();
+
+	// Need a CBV descriptor for each object for each frame resource.
+	for (int frameIndex = 0; frameIndex < gNumFrameResources; ++frameIndex)
+	{
+		auto objectCB = mFrameResources[frameIndex]->ObjectCB->Resource();
+		for (UINT i = 0; i < objCount; ++i)
+		{
+			D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectCB->GetGPUVirtualAddress();
+
+			// Offset to the ith object constant buffer in the buffer.
+			cbAddress += i * objCBByteSize;
+
+			// Offset to the object cbv in the descriptor heap.
+			int heapIndex = frameIndex * objCount + i;
+			auto handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+			handle.Offset(heapIndex, mCbvSrvUavDescriptorSize);
+
+			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+			cbvDesc.BufferLocation = cbAddress;
+			cbvDesc.SizeInBytes = objCBByteSize;
+
+			m_device->CreateConstantBufferView(&cbvDesc, handle);
+		}
+	}
+
+	
+	/*mConstantBuffer = std::make_unique<UploadBuffer<ObjectConstants>>(m_device.Get(), 1, true);
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
 	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mConstantBuffer->Resource()->GetGPUVirtualAddress();
@@ -577,7 +631,7 @@ void D3D12HelloTriangle::BuildConstantBuffers()
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 	cbvDesc.BufferLocation = cbAddress;
 	cbvDesc.SizeInBytes = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-	m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+	m_device->CreateConstantBufferView(&cbvDesc, mCbvHeap->GetCPUDescriptorHandleForHeapStart());*/
 }
 
 void D3D12HelloTriangle::BuildRootSignature()
@@ -676,6 +730,129 @@ void D3D12HelloTriangle::BuildShapeGeometry()
 	GeometryGenerator geoGen;
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
 	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(20.f, 30.f, 60);
+
+	UINT boxVertexOffset = 0;
+	UINT sphereVertexOffset = (UINT)box.Vertices.size();
+
+	UINT boxIndexOffset = 0;
+	UINT sphereIndexOffset = (UINT)box.Indices32.size();
+
+	SubmeshGeometry boxSubMesh;
+	boxSubMesh.IndexCount = (UINT)box.Indices32.size();
+	boxSubMesh.StartIndexLocation = boxIndexOffset;
+	boxSubMesh.BaseVertexLocation = boxVertexOffset;
+
+	SubmeshGeometry sphereSubMesh;
+	sphereSubMesh.IndexCount = (UINT)sphere.Indices32.size();
+	sphereSubMesh.StartIndexLocation = sphereIndexOffset;
+	sphereSubMesh.BaseVertexLocation = sphereVertexOffset;
+
+	auto totalVertexCount = box.Vertices.size() + sphere.Vertices.size();
+	std::vector<Vertex> vertices(totalVertexCount);
+
+	UINT k = 0;
+	for (size_t i = 0 ;i<box.Vertices.size();i++,k++)
+	{
+		vertices[k].position = box.Vertices[i].Position;
+		vertices[k].Color = XMFLOAT4(DirectX::Colors::DarkGreen);
+	}
+	for (size_t i = 0; i < sphere.Vertices.size(); ++i, ++k)
+	{
+		vertices[k].position = sphere.Vertices[i].Position;
+		vertices[k].Color = XMFLOAT4(DirectX::Colors::Crimson);
+	}
+
+	std::vector<std::uint16_t> indices;
+	indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
+	indices.insert(indices.end(), std::begin(sphere.GetIndices16()), std::end(sphere.GetIndices16()));
+	
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	auto geo = std::make_unique<MeshGeometry>();
+	geo->Name = "shapeGeo";
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	geo->VertexBufferByteSize = vbByteSize;
+	geo->IndexBufferByteSize = ibByteSize;
+	geo->VertexByteStride = sizeof(Vertex);
+	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+
+	geo->DrawArgs["box"] = boxSubMesh;
+	geo->DrawArgs["sphere"] = sphereSubMesh;
+
+	mGeometries[geo->Name] = std::move(geo);
+}
+
+void D3D12HelloTriangle::BuildRenderItems()
+{
+	auto boxRitem = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f)*XMMatrixTranslation(0.0f, 0.5f, 0.0f));
+	boxRitem->ObjCBIndex = 0;
+	boxRitem->Geo = mGeometries["shapeGeo"].get();
+	boxRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
+	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
+	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
+
+	mAllRitem.push_back(std::move(boxRitem));
+
+	UINT objCBIndex = 2;
+	for (INT32 i = 0; i < 5; i++)
+	{
+		auto leftSphereRitem = std::make_unique<RenderItem>();
+		auto rightSphereRitem = std::make_unique<RenderItem>();
+
+		XMMATRIX LeftSphereWorld = XMMatrixTranslation(-5.f, 3.5f, -10.f + i * 5.f);
+		XMMATRIX RightSphereWorld = XMMatrixTranslation(+5.f, 3.5f, -10.f + i * 5.f);
+
+		XMStoreFloat4x4(&leftSphereRitem->World, LeftSphereWorld);
+		leftSphereRitem->ObjCBIndex = objCBIndex++;
+		leftSphereRitem->Geo = mGeometries["shapeGeo"].get();
+		leftSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		leftSphereRitem->IndexCount = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+		leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+		leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+
+		XMStoreFloat4x4(&rightSphereRitem->World, RightSphereWorld);
+		rightSphereRitem->ObjCBIndex = objCBIndex++;
+		rightSphereRitem->Geo = mGeometries["shapeGeo"].get();
+		rightSphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		rightSphereRitem->IndexCount = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+		rightSphereRitem->StartIndexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+		rightSphereRitem->BaseVertexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+
+		mAllRitem.push_back(std::move(leftSphereRitem));
+		mAllRitem.push_back(std::move(rightSphereRitem));
+	}
+
+	for (auto& e : mAllRitem)
+	{
+		mOpaqueRitem.push_back(e.get());
+	}
+}
+
+void D3D12HelloTriangle::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+{
+	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	auto objectCB = mCurrentFrameResource->ObjectCB->Resource();
+	for (size_t i = 0 ;i<ritems.size();i++)
+	{
+		auto ri = ritems[i];
+		cmdList->IASetIndexBuffer( &ri->Geo->IndexBufferView());
+		cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
+		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
+
+		UINT cbvIndex = mCurrFrameResourceIndex * (UINT)mOpaqueRitem.size() + ri->ObjCBIndex;
+		auto cbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+		cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+	}
 }
 
 void D3D12HelloTriangle::UpdateObjectCBs()
