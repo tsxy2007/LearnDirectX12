@@ -43,6 +43,11 @@ private:
 	void LoadPipeline();
 
 	void BuildDescriptorHeaps();
+	void CreateRtvAndDsvDescriptorHeaps();
+	void CreateSwapChain(ComPtr<IDXGIFactory6>& factory);
+
+	D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView()const;
+
 	void LoadAssets();
 	void PopulateCommandList();
 	void WaitForPreviousFrame(); 

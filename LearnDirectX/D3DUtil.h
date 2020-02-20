@@ -37,6 +37,26 @@ public:
 		return I;
 	};
 
+
+	static Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
+		const std::wstring& filename,
+		const D3D_SHADER_MACRO* defines,
+		const std::string & entrypoint,
+		const std::string& target);
+
+};
+
+class DxException
+{
+public:
+	DxException() = default;
+	DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& filename, int lineNumber);
+	std::wstring ToString()const;
+
+	HRESULT ErrorCode = S_OK;
+	std::wstring FunctionName;
+	std::wstring FileName;
+	int LineNumber = -1;
 };
 
 struct SubmeshGeometry
@@ -67,13 +87,25 @@ struct MeshGeometry
 
 	std::unordered_map < std::string,SubmeshGeometry > DrawArgs;
 
+	// ÉèÖÃvertex buffer view
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView()const
 	{
-		return { VertexBufferGPU->GetGPUVirtualAddress(),VertexBufferByteSize,VertexByteStride };
+		return 
+		{ 
+			VertexBufferGPU->GetGPUVirtualAddress(),
+			VertexBufferByteSize,
+			VertexByteStride 
+		};
 	}
+	// ÉèÖÃindex buffer view
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView() const
 	{
-		return { IndexBufferGPU->GetGPUVirtualAddress(),IndexBufferByteSize,IndexFormat };
+		return 
+		{ 
+			IndexBufferGPU->GetGPUVirtualAddress(),
+			IndexBufferByteSize,
+			IndexFormat 
+		};
 	}
 
 	void DisposeUploaders()
