@@ -50,7 +50,7 @@ private:
 
 	void LoadAssets();
 	void PopulateCommandList();
-	void WaitForPreviousFrame(); 
+	void FlushCommandQueue(); 
 
 	void BuildFrameResources();
 	void BuildBoxGeometry();

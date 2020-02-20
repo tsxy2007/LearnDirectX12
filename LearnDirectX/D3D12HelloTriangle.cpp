@@ -35,8 +35,6 @@ void D3D12HelloTriangle::OnInit()
 
 void D3D12HelloTriangle::LoadPipeline()
 {
-
-	
 	UINT dxgiFactoryFlags = 0;
 	HRESULT hr;
 #if defined(_DEBUG)
@@ -82,8 +80,6 @@ void D3D12HelloTriangle::LoadPipeline()
 	CreateSwapChain(factory);
 
 	ThrowIfFailed(factory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER));
-
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
 	// 创建一个描述堆
 	{
@@ -174,143 +170,12 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12HelloTriangle::CurrentBackBufferView() const
 
 void D3D12HelloTriangle::LoadAssets()
 {	
-	
-	D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle = m_srvHeap->GetCPUDescriptorHandleForHeapStart();
-	//创建Vertex Buffer
+	//执行命令
 	{
-		
-
-		//Vertex triangleVertices[] =
-		//{
-		//	{ { 0.25f, 0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::White), { 1.f, 0.f } },
-		//	{ { 0.25f, -0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::Black), { 1.0f, 1.0f } },
-		//	{ { -0.25f, -0.25f * m_aspectRatio, 0.0f },XMFLOAT4(Colors::Green), { 0.0f, 1.0f } },
-		//	{ { -0.25f, 0.25f * m_aspectRatio, 0.0f }, XMFLOAT4(Colors::Blue),{ 0.0f, 0.0f } },
-		//};
-
-		//const UINT vertexBufferSize = sizeof(triangleVertices);
-		//const UINT Count = vertexBufferSize / sizeof(Vertex);
-
-		//VertexBuffer = std::make_unique<UploadBuffer<Vertex>>(m_device.Get(), Count, false);
-		////VertexBuffer->CopyDataList(0, Count, triangleVertices);
-		//for (int i = 0; i < Count; i++)
-		//{
-		//	Vertex v = triangleVertices[i];
-		//	VertexBuffer->CopyData(i, v);
-		//}
-
-		////初始化vertexbuffer view
-		//m_vertexBufferView.BufferLocation = VertexBuffer->Resource()->GetGPUVirtualAddress();// m_vertexBuffer->GetGPUVirtualAddress();
-		//m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-		//m_vertexBufferView.SizeInBytes = vertexBufferSize;
-
-		//DWORD iList[] =
-		//{
-		//	0,1,2,
-		//	0,2,3
-		//};
-		//const UINT IndexBufferSize = sizeof(iList);
-		//const UINT IndexCount = IndexBufferSize / sizeof(DWORD);
-
-
-		//IndexBuffer = std::make_unique<UploadBuffer<DWORD>>(m_device.Get(), IndexCount, false);
-		////IndexBuffer->CopyDataList(0, IndexCount, iList);
-		//for (UINT i = 0; i < IndexCount; i++)
-		//{
-		//	IndexBuffer->CopyData(i, iList[i]);
-		//}
-
-		//// 初始化顶点数据
-		//m_IndexBufferView.BufferLocation = IndexBuffer->Resource()->GetGPUVirtualAddress();// m_IndexBuffer->GetGPUVirtualAddress();
-		//m_IndexBufferView.SizeInBytes = IndexBufferSize;
-		//m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
-		//// 加载Texture
-		//TexMetadata MetaData;
-		//ScratchImage Image;
-		//LoadFromDDSFile(L"test.DDS", DDS_FLAGS_NONE, &MetaData,Image);
-
-		//{
-		//	D3D12_RESOURCE_DESC bufferdc = CD3DX12_RESOURCE_DESC::Tex2D(MetaData.format, MetaData.width, MetaData.height);
-		//	D3D12_RESOURCE_ALLOCATION_INFO info = m_device->GetResourceAllocationInfo(0, 1, &bufferdc);
-
-		//	// 创建上传堆
-
-		//	D3D12_RESOURCE_DESC Uploadbufferdc = CD3DX12_RESOURCE_DESC::Buffer(info.SizeInBytes);
-
-		//	ID3D12Heap* UploadHeap;
-		//	D3D12_HEAP_PROPERTIES UploadHeapProperties = { D3D12_HEAP_TYPE_UPLOAD };
-		//	D3D12_HEAP_DESC UpLoadHeapDesc = { info.SizeInBytes,UploadHeapProperties };
-		//	ThrowIfFailed(m_device->CreateHeap(&UpLoadHeapDesc, IID_PPV_ARGS(&UploadHeap)));
-		//	ThrowIfFailed(m_device->CreatePlacedResource(
-		//		UploadHeap,
-		//		0,
-		//		&Uploadbufferdc,
-		//		D3D12_RESOURCE_STATE_GENERIC_READ,
-		//		nullptr,
-		//		IID_PPV_ARGS(&m_ITextureUpload)
-		//	));
-
-
-		//	ID3D12Heap* pUploadHeap;
-		//	D3D12_HEAP_PROPERTIES DefaultHeapProperties = { D3D12_HEAP_TYPE_DEFAULT };
-		//	D3D12_HEAP_DESC heapdesc = { info.SizeInBytes ,DefaultHeapProperties };
-		//	ThrowIfFailed(m_device->CreateHeap(&heapdesc, IID_PPV_ARGS(&pUploadHeap)));
-		//	// 创建缓冲
-		//	ID3D12Resource* pTextureResource;
-		//	ThrowIfFailed(m_device->CreatePlacedResource(
-		//		pUploadHeap,
-		//		0,
-		//		&bufferdc,
-		//		D3D12_RESOURCE_STATE_COPY_DEST,
-		//		NULL,
-		//		IID_PPV_ARGS(&pTextureResource)));
-
-
-		//	UINT   nNumSubresources = 1u;  //我们只有一副图片，即子资源个数为1
-		//	UINT   nTextureRowNum = 0u;
-		//	UINT64 n64TextureRowSizes = 0u;
-		//	UINT64 n64RequiredSize = 0u;
-
-		//	D3D12_PLACED_SUBRESOURCE_FOOTPRINT FootPrint;
-		//	m_device->GetCopyableFootprints(&bufferdc, 0, 1, 0, &FootPrint, &nTextureRowNum, &n64TextureRowSizes, &n64RequiredSize);;
-
-		//	UINT8* pTexturePixel;
-		//	CD3DX12_RANGE TextureRange(0, 0);
-		//	ThrowIfFailed(m_ITextureUpload->Map(0, &TextureRange, reinterpret_cast<void**>(&pTexturePixel)));
-		//	memcpy(pTexturePixel, Image.GetPixels(), Image.GetPixelsSize());
-		//	m_ITextureUpload->Unmap(0, nullptr);
-
-		//	CD3DX12_TEXTURE_COPY_LOCATION Dst(pTextureResource, 0);
-		//	CD3DX12_TEXTURE_COPY_LOCATION Src(m_ITextureUpload.Get(), FootPrint);
-		//	m_commandList->CopyTextureRegion(&Dst, 0, 0, 0, &Src, nullptr);
-		//	
-
-		//	//设置一个资源屏障，同步并确认复制操作完成
-		//	//直接使用结构体然后调用的形式
-		//	D3D12_RESOURCE_BARRIER stResBar = {};
-		//	stResBar.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		//	stResBar.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		//	stResBar.Transition.pResource = pTextureResource;
-		//	stResBar.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		//	stResBar.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		//	stResBar.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-		//	m_commandList->ResourceBarrier(1, &stResBar);
-
-		//	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		//	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		//	srvDesc.Format = bufferdc.Format;
-		//	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		//	srvDesc.Texture2D.MipLevels = 1;
-
-		//	m_device->CreateShaderResourceView(pTextureResource, &srvDesc, srvHeapHandle);
-		//}
 		ThrowIfFailed(m_commandList->Close());
 		ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
 		m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 	}
-
-
 	// 创建fence 异步并且等待assets 被GPU加载
 	{
 		ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
@@ -320,13 +185,13 @@ void D3D12HelloTriangle::LoadAssets()
 		{ 
 			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
 		}
-		WaitForPreviousFrame();
+		FlushCommandQueue();
 	}
 }
 
 void D3D12HelloTriangle::OnUpdate(const GameTimer& gt)
 {
-
+	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 	float x = mRandius * sinf(mPhi) * cosf(mTheta);
 	float z = mRandius * sinf(mPhi) * sinf(mTheta);
 	float y = mRandius * cosf(mPhi);
@@ -349,12 +214,12 @@ void D3D12HelloTriangle::OnRender(const GameTimer& gt)
 
 	// 推送
 	ThrowIfFailed(m_swapChain->Present(1, 0));
-	WaitForPreviousFrame();
+	FlushCommandQueue();
 }
 
 void D3D12HelloTriangle::OnDestroy()
 {
-	WaitForPreviousFrame();
+	FlushCommandQueue();
 	CloseHandle(m_fenceEvent);
 }
 
@@ -484,17 +349,17 @@ void D3D12HelloTriangle::PopulateCommandList()
 	ThrowIfFailed(m_commandList->Close());
 }
 
-void D3D12HelloTriangle::WaitForPreviousFrame()
+void D3D12HelloTriangle::FlushCommandQueue()
 {
-	const UINT64 fence = m_fenceValue;
-	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
 	m_fenceValue++;
-	if (m_fence->GetCompletedValue()<fence)
+	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValue));
+	if (m_fence->GetCompletedValue() < m_fenceValue)
 	{
-		ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent));
 		WaitForSingleObject(m_fenceEvent, INFINITE);
+		CloseHandle(eventHandle);
 	}
-	m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 }
 
 void D3D12HelloTriangle::BuildFrameResources()
@@ -578,7 +443,7 @@ void D3D12HelloTriangle::BuildCamera()
 	FXMVECTOR FocusPosition = { 0, 0, -1.0f };
 	FXMVECTOR UpDirection = { 0.0f, 1.f, 0.0f };
 	mCamera->SetPosition(EyePosition);
-	mCamera->SetProjectionValues(120.f, m_width / m_height, 0.1f, 1000.0f);
+	mCamera->SetProjectionValues(90.f, m_width / m_height, 0.1f, 1000.0f);
 	mCamera->SetLookAtPos(XMFLOAT3(0.f, 0.f, 0.f));
 }
 
