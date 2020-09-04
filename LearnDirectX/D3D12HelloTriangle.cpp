@@ -355,7 +355,7 @@ void D3D12HelloTriangle::FlushCommandQueue()
 	ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), m_fenceValue));
 	if (m_fence->GetCompletedValue() < m_fenceValue)
 	{
-		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+		HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS);
 		ThrowIfFailed(m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent));
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 		CloseHandle(eventHandle);
